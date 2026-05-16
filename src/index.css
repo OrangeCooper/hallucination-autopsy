@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+  }
+
+  ::selection {
+    @apply bg-amber-200/70 text-navy-900;
+  }
+
+  select, input, textarea {
+    @apply transition-colors duration-150;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-navy-500 text-white px-5 py-2.5 rounded text-sm font-medium
+           hover:bg-navy-600 transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-navy-300 focus:ring-offset-1
+           active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply bg-white text-navy-500 border border-navy-200 px-5 py-2.5 rounded text-sm font-medium
+           hover:bg-navy-50 transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-navy-300 focus:ring-offset-1
+           active:scale-[0.98];
+  }
+
+  .btn-danger {
+    @apply bg-red-50 text-red-700 border border-red-200 px-5 py-2.5 rounded text-sm font-medium
+           hover:bg-red-100 transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1
+           active:scale-[0.98];
+  }
+
+  .card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm
+           transition-shadow duration-150;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-md hover:border-gray-300;
+  }
+
+  .card-accent {
+    @apply card border-l-4 border-l-navy-500;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .tag-green {
+    @apply tag bg-green-100 text-green-800;
+  }
+
+  .tag-red {
+    @apply tag bg-red-100 text-red-800;
+  }
+
+  .tag-amber {
+    @apply tag bg-amber-100 text-amber-800;
+  }
+
+  .tag-gray {
+    @apply tag bg-gray-100 text-gray-600;
+  }
+
+  .tag-navy {
+    @apply tag bg-navy-100 text-navy-600;
+  }
+}
+
+.document-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+
+.annotation-marker {
+  @apply bg-amber-200/60 cursor-pointer relative rounded-sm
+         transition-colors duration-150;
+}
+
+.annotation-marker:hover {
+  @apply bg-amber-300/70;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.shimmer-block {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.dot-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot-pulse span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #9ca3af;
+  animation: dot-pulse 1.4s ease-in-out infinite both;
+}
+
+.dot-pulse span:nth-child(1) { animation-delay: 0s; }
+.dot-pulse span:nth-child(2) { animation-delay: 0.16s; }
+.dot-pulse span:nth-child(3) { animation-delay: 0.32s; }
+
+.status-step {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.status-step-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  flex-shrink: 0;
+}
+
+.status-step-dot.active {
+  border-color: #1a2744;
+  background: #1a2744;
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+.status-step-dot.completed {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.status-step-dot.completed::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 7px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(0.5px, -0.5px);
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .btn-primary, .btn-secondary, .btn-danger,
+  button, .no-print, nav, footer {
+    display: none !important;
+  }
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}

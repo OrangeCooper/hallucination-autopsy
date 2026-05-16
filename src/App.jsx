@@ -1,0 +1,194 @@
+import { useState, useCallback, useEffect } from 'react'
+import NavBar from './components/NavBar'
+import LearnMode from './components/LearnMode'
+import CaseBriefing from './components/CaseBriefing'
+import DocumentReview from './components/DocumentReview'
+import AnalysisReport from './components/AnalysisReport'
+import SkillProfile from './components/SkillProfile'
+import AccountPage from './components/AccountPage'
+import TestMode from './components/TestMode'
+import LoginScreen from './components/LoginScreen'
+import { useSkillProfile } from './hooks/useSkillProfile'
+import { scoreParagraphAnnotations } from './utils/annotations'
+import { onAuthChange, logoutUser } from './utils/firebase'
+import { getSessions, getSkillProfile } from './utils/storage'
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('learn')
+  const [screen, setScreen] = useState('learn')
+  const [selectedScenario, setSelectedScenario] = useState(null)
+  const [lastAnnotations, setLastAnnotations] = useState(null)
+  const [currentMode, setCurrentMode] = useState(null)
+  const [user, setUser] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
+  const [userSessions, setUserSessions] = useState([])
+  const [showAbout, setShowAbout] = useState(false)
+  const { profile, sessions, updateFromSession: updateStoredSession } = useSkillProfile()
+
+  useEffect(() => {
+    const unsub = onAuthChange((fbUser) => {
+      if (fbUser) {
+        setUser(fbUser)
+        setUserProfile(getSkillProfile())
+        setUserSessions(getSessions() || [])
+      }
+    })
+    return () => { if (unsub) unsub() }
+  }, [])
+
+  const effectiveProfile = userProfile || profile
+  const effectiveSessions = userSessions.length > 0 ? userSessions : sessions
+
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab)
+    setSelectedScenario(null)
+    setLastAnnotations(null)
+    setCurrentMode(null)
+    if (tab === 'learn' || tab === 'home') setScreen('learn')
+    else if (tab === 'test') setScreen('test')
+  }, [])
+
+  const handleStartScenario = useCallback((scenario, mode) => {
+    setSelectedScenario(scenario)
+    setCurrentMode(mode || 'static')
+    setScreen('case-briefing')
+  }, [])
+
+  const handleBeginReview = useCallback(() => {
+    setScreen('document-review')
+  }, [])
+
+  const handleSubmitReview = useCallback((annotations) => {
+    setLastAnnotations(annotations)
+    setScreen('analysis-report')
+  }, [])
+
+  const handleSaveAndExit = useCallback((annotations, overrides, identifiedErrors) => {
+    if (selectedScenario && annotations) {
+      const { matchedAnnotations } = scoreParagraphAnnotations(annotations, selectedScenario.plantedErrors)
+      const effectiveIdentified = identifiedErrors || new Set(
+        matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId)
+      )
+      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, overrides, effectiveIdentified)
+      if (user) {
+        setUserProfile(getSkillProfile())
+        setUserSessions(getSessions())
+      }
+    }
+    setLastAnnotations(null)
+    setSelectedScenario(null)
+    setCurrentMode(null)
+    setScreen('learn')
+    setActiveTab('learn')
+  }, [selectedScenario, updateStoredSession, user, currentMode])
+
+  const handleLogin = useCallback((userData) => {
+    setUser(userData)
+    setUserProfile(getSkillProfile())
+    setUserSessions(getSessions() || [])
+    handleTabChange('learn')
+  }, [handleTabChange])
+
+  const handleLogout = useCallback(async () => {
+    try { await logoutUser() } catch {}
+    setUser(null)
+    setUserProfile(null)
+    setUserSessions([])
+  }, [])
+
+  const handleNavigate = useCallback((target) => {
+    if (target === 'account') {
+      setScreen('account')
+      setActiveTab('learn')
+    } else if (target === 'skill-profile') {
+      setScreen('skill-profile')
+      setActiveTab('learn')
+    } else if (target === 'session-archive') {
+      setScreen('account')
+      setActiveTab('learn')
+    } else if (target === 'login') {
+      setScreen('login')
+    }
+  }, [])
+
+  const handleViewSkillProfile = useCallback(() => {
+    setScreen('skill-profile')
+    setActiveTab('learn')
+  }, [])
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <NavBar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        user={user}
+        onLogout={handleLogout}
+        onShowAbout={() => setShowAbout(true)}
+        onNavigate={handleNavigate}
+      />
+      <main className="flex-1">
+        {screen === 'learn' && (
+          <LearnMode
+            profile={effectiveProfile}
+            sessions={effectiveSessions}
+            onStartScenario={handleStartScenario}
+            onViewSkillProfile={handleViewSkillProfile}
+          />
+        )}
+
+        {screen === 'test' && (
+          <TestMode
+            profile={{ ...effectiveProfile, sessions: effectiveSessions }}
+            onStartScenario={handleStartScenario}
+          />
+        )}
+
+        {screen === 'case-briefing' && selectedScenario && (
+          <CaseBriefing scenario={selectedScenario} onBegin={handleBeginReview} />
+        )}
+
+        {screen === 'document-review' && selectedScenario && (
+          <DocumentReview scenario={selectedScenario} onSubmit={handleSubmitReview} />
+        )}
+
+        {screen === 'analysis-report' && selectedScenario && lastAnnotations && (
+          <AnalysisReport
+            scenario={selectedScenario}
+            annotations={lastAnnotations}
+            onBackToDashboard={handleSaveAndExit}
+          />
+        )}
+
+        {screen === 'skill-profile' && (
+          <SkillProfile
+            profile={effectiveProfile}
+            sessions={effectiveSessions}
+            onBack={() => { setScreen('learn'); setActiveTab('learn') }}
+          />
+        )}
+
+        {screen === 'account' && (
+          <AccountPage
+            profile={effectiveProfile}
+            sessions={effectiveSessions}
+            user={user}
+            onBack={() => { setScreen('learn'); setActiveTab('learn') }}
+          />
+        )}
+
+        {screen === 'login' && (
+          <LoginScreen
+            onBack={() => { setScreen('learn'); setActiveTab('learn') }}
+            onLogin={handleLogin}
+          />
+        )}
+      </main>
+
+      <footer className="text-center text-[10px] text-gray-400 py-3 px-4 border-t border-gray-200 leading-relaxed bg-white">
+        Hallucination Autopsy contains no real client data. All legal scenarios are entirely fictional and synthetic.
+        Nothing on this platform constitutes legal advice. All AI-generated explanations should be independently
+        verified against primary legal sources.
+      </footer>
+    </div>
+  )
+}
