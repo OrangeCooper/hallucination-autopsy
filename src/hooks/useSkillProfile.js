@@ -27,7 +27,7 @@ export function useSkillProfile() {
       ? new Set(effectiveIdentified)
       : new Set(matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId))
 
-    if (!effectiveIdentified && overrides) {
+    if (overrides) {
       for (const [errorId, action] of Object.entries(overrides)) {
         if (action === 'mark-identified') identified.add(errorId)
         if (action === 'mark-missed') identified.delete(errorId)
