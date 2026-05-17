@@ -4,33 +4,63 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || ''
 const MODEL = 'gpt-oss-120b'
 
+let warmedUp = false
+
+export async function warmUpAPI() {
+  if (warmedUp || !API_KEY) return
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      }),
+      signal: AbortSignal.timeout(10000),
+    })
+    warmedUp = true
+  } catch {}
+}
+
 async function callOpenRouter(messages, systemPrompt, maxTokens = 1000) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://hallucination-autopsy.vercel.app',
-      'X-Title': 'Hallucination Autopsy',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages,
-      ],
-      temperature: 0.2,
-      max_tokens: maxTokens,
-    }),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 120000)
 
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`API error ${response.status}: ${err}`)
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://hallucination-autopsy.vercel.app',
+        'X-Title': 'Hallucination Autopsy',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature: 0.2,
+        max_tokens: maxTokens,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const err = await response.text()
+      throw new Error(`API error ${response.status}: ${err}`)
+    }
+
+    const data = await response.json()
+    return data.choices[0].message.content
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const data = await response.json()
-  return data.choices[0].message.content
 }
 
 function extractJSON(raw) {

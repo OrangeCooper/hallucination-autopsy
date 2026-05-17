@@ -11,6 +11,7 @@ import LoginScreen from './components/LoginScreen'
 import TutorialBanner from './components/TutorialBanner'
 import { useSkillProfile } from './hooks/useSkillProfile'
 import { scoreParagraphAnnotations } from './utils/annotations'
+import { warmUpAPI } from './utils/api'
 import { onAuthChange, logoutUser } from './utils/firebase'
 import { getSessions, getSkillProfile } from './utils/storage'
 import { TUTORIAL_SCENARIO } from './data/tutorialScenario'
@@ -27,6 +28,7 @@ export default function App() {
   const { profile, sessions, updateFromSession: updateStoredSession } = useSkillProfile()
 
   useEffect(() => {
+    warmUpAPI()
     const unsub = onAuthChange((fbUser) => {
       if (fbUser) {
         setUser(fbUser)
@@ -47,6 +49,7 @@ export default function App() {
     setCurrentMode(null)
     if (tab === 'learn' || tab === 'home') setScreen('learn')
     else if (tab === 'test') setScreen('test')
+    if (tab === 'learn' || tab === 'test') warmUpAPI()
   }, [])
 
   const handleStartScenario = useCallback((scenario, mode) => {
