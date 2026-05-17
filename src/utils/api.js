@@ -145,8 +145,8 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const userFound = semanticAnnotations.filter(a => a.result === 'Identified' || a.result === 'Identified (wrong category)' || a.result === 'Identified (overruled)').length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
-  const userDescriptions = (userAnnotations || [])
-    .filter(a => a.matchedErrorId)
+  const notesFromMatched = (userAnnotations || [])
+    .filter(a => a.matchedErrorId && a.explanation)
     .map(a => {
       const err = plantedErrors.find(e => e.errorId === a.matchedErrorId)
       if (!err) return null
@@ -156,6 +156,18 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     })
     .filter(Boolean)
     .join('\n')
+
+  const notesFromRaw = (rawAnnotations || [])
+    .filter(a => a.explanation)
+    .map(a => {
+      const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
+      if (!err) return null
+      return `- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}): user wrote: "${a.explanation}"`
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  const userDescriptions = notesFromMatched || notesFromRaw
 
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
