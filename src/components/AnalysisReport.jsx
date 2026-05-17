@@ -50,17 +50,16 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
 
   const summaryAnnotations = useMemo(() => {
     return autoMatch.matchedAnnotations.map(a => {
-      if (a.matchedErrorId && overrides[a.matchedErrorId] === 'mark-missed') {
-        return { ...a, matchedErrorId: null, overruled: true }
-      }
-      return a
+      const override = a.matchedErrorId ? overrides[a.matchedErrorId] : null
+      if (!override) return a
+      return { ...a, overrideResult: override === 'mark-missed' ? 'missed' : 'identified' }
     })
   }, [autoMatch.matchedAnnotations, overrides])
 
   useEffect(() => {
     let cancelled = false
     setSummaryLoading(true)
-    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations, overrides)
+    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations)
       .then(text => { if (!cancelled) setSummary(text) })
       .catch(() => {
         if (!cancelled && scenario.tutorialStaticSummary) {

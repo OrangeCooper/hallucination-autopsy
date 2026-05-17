@@ -99,7 +99,7 @@ function sanitizeSummary(text) {
   return clean
 }
 
-function buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides = {}) {
+function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
   const userMap = new Map()
   userAnnotations.forEach(a => {
     if (a.matchedErrorId) userMap.set(a.matchedErrorId, a)
@@ -107,12 +107,11 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations, override
 
   return plantedErrors.map(e => {
     const ann = userMap.get(e.errorId)
-    const override = overrides[e.errorId]
 
     let result
-    if (override === 'mark-missed') {
+    if (ann?.overrideResult === 'missed') {
       result = 'Missed (reviewer manually marked as missed)'
-    } else if (override === 'mark-identified') {
+    } else if (ann?.overrideResult === 'identified') {
       result = 'Identified (reviewer manually marked as identified)'
     } else if (ann) {
       result = ann.wrongCategory ? 'Identified (wrong category)' : 'Identified'
@@ -128,7 +127,7 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations, override
   })
 }
 
-export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations, overrides = {}) {
+export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations) {
   const systemPrompt = `You are a supervising partner reviewing an associate's supervision of AI-generated legal work.
 
 Do NOT reference internal identifiers, annotation IDs, coordinates, offsets, labels, or technical metadata.
@@ -141,7 +140,7 @@ Refer only to:
 
 Write in professional analytical prose. No exclamation marks. No gamified language.`
 
-  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides)
+  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations)
   const userFound = semanticAnnotations.filter(a => a.result.startsWith('Identified')).length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
@@ -155,10 +154,9 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     seen.add(key)
     const err = a.matchedErrorId ? plantedErrors.find(e => e.errorId === a.matchedErrorId) : null
     if (err) {
-      const override = overrides[err.errorId]
       let status
-      if (override === 'mark-missed') status = 'reviewer manually marked missed'
-      else if (override === 'mark-identified') status = 'reviewer manually marked identified'
+      if (a.overrideResult === 'missed') status = 'reviewer manually marked missed'
+      else if (a.overrideResult === 'identified') status = 'reviewer manually marked identified'
       else if (err.category === a.category) status = 'correctly identified'
       else status = 'wrong category'
       userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`)

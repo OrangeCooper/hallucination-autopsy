@@ -67,13 +67,19 @@ export default function App() {
     setScreen('analysis-report')
   }, [])
 
-  const handleSaveAndExit = useCallback((annotations, overrides, identifiedErrors) => {
-    if (selectedScenario && annotations) {
-      const { matchedAnnotations } = scoreParagraphAnnotations(annotations, selectedScenario.plantedErrors)
-      const effectiveIdentified = identifiedErrors || new Set(
-        matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId)
+  const handleSaveAndExit = useCallback((rawAnnotations, rawOverrides, analysisIdentifiedSet) => {
+    if (selectedScenario && rawAnnotations) {
+      const { matchedAnnotations } = scoreParagraphAnnotations(rawAnnotations, selectedScenario.plantedErrors)
+      const identified = new Set(
+        matchedAnnotations
+          .filter(a => a.matchedErrorId && !a.wrongCategory)
+          .map(a => a.matchedErrorId)
       )
-      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, overrides, effectiveIdentified)
+      for (const [errorId, action] of Object.entries(rawOverrides || {})) {
+        if (action === 'mark-identified') identified.add(errorId)
+        if (action === 'mark-missed') identified.delete(errorId)
+      }
+      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, rawOverrides, identified)
       if (user) {
         setUserProfile(getSkillProfile())
         setUserSessions(getSessions())
