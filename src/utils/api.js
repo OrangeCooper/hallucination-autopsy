@@ -163,10 +163,15 @@ ${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber}: ${a.errorCateg
 
 The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.
 
-What the associate wrote about each flagged passage:
-${userDescriptions || '(nothing written by user)'}
+THE ASSOCIATE'S OWN NOTES FOR EACH FLAGGED PASSAGE:
+${userDescriptions || '(The associate did not leave any notes.)'}
 
-Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. Reference specific paragraph numbers and error categories the associate handled well or missed. Where the associate's explanation was incorrect or incomplete, note the misunderstanding and provide guidance. Where the associate correctly identified an error but assigned the wrong category, note this as a category recognition issue. Reference document context, not internal identifiers.`
+Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. YOU MUST:
+1. Quote or reference what the associate wrote in their notes and respond to their specific reasoning.
+2. If their explanation was correct, acknowledge it.
+3. If their explanation was incorrect or incomplete, explain why and provide guidance.
+4. Where the associate assigned the wrong error category, note this as a category recognition issue.
+Reference specific paragraph numbers and error categories. Do NOT reference internal identifiers.`
 
   const raw = await callOpenRouter([{ role: 'user', content: prompt }], systemPrompt)
   return sanitizeSummary(raw)

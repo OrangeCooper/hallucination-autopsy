@@ -58,16 +58,17 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
   }, [autoMatch.matchedAnnotations, overrides])
 
   useEffect(() => {
-    if (isTutorial && scenario.tutorialStaticSummary) {
-      setSummary(scenario.tutorialStaticSummary)
-      setSummaryLoading(false)
-      return
-    }
     let cancelled = false
     setSummaryLoading(true)
     generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations, overrides)
       .then(text => { if (!cancelled) setSummary(text) })
-      .catch(() => { if (!cancelled) setSummary(null) })
+      .catch(() => {
+        if (!cancelled && scenario.tutorialStaticSummary) {
+          setSummary(scenario.tutorialStaticSummary)
+        } else if (!cancelled) {
+          setSummary(null)
+        }
+      })
       .finally(() => { if (!cancelled) setSummaryLoading(false) })
     return () => { cancelled = true }
   }, [scenario, summaryAnnotations, isTutorial])
