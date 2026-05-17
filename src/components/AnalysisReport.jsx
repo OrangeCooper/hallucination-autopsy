@@ -71,7 +71,7 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
       })
       .finally(() => { if (!cancelled) setSummaryLoading(false) })
     return () => { cancelled = true }
-  }, [scenario, summaryAnnotations, isTutorial])
+  }, [scenario, summaryAnnotations, overrides, isTutorial])
 
   const renderAnnotatedDoc = () => {
     const matchedByParagraph = {}

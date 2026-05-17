@@ -23,9 +23,12 @@ export function useSkillProfile() {
   const updateFromSession = useCallback((scenario, matchedAnnotations, plantedErrors, mode, overrides, effectiveIdentified) => {
     const newProfile = { ...profile }
     newProfile.sessionsCompleted += 1
-    const identified = effectiveIdentified
-      ? new Set(effectiveIdentified)
-      : new Set(matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId))
+
+    const identified = new Set(
+      matchedAnnotations
+        .filter(a => a.matchedErrorId && !a.wrongCategory)
+        .map(a => a.matchedErrorId)
+    )
 
     if (overrides) {
       for (const [errorId, action] of Object.entries(overrides)) {

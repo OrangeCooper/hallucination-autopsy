@@ -111,9 +111,9 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations, override
 
     let result
     if (override === 'mark-missed') {
-      result = 'Missed (overruled)'
+      result = 'Missed (reviewer manually marked as missed)'
     } else if (override === 'mark-identified') {
-      result = 'Identified (overruled)'
+      result = 'Identified (reviewer manually marked as identified)'
     } else if (ann) {
       result = ann.wrongCategory ? 'Identified (wrong category)' : 'Identified'
     } else {
@@ -142,7 +142,7 @@ Refer only to:
 Write in professional analytical prose. No exclamation marks. No gamified language.`
 
   const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides)
-  const userFound = semanticAnnotations.filter(a => a.result === 'Identified' || a.result === 'Identified (wrong category)' || a.result === 'Identified (overruled)').length
+  const userFound = semanticAnnotations.filter(a => a.result.startsWith('Identified')).length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
   const seen = new Set()
@@ -156,7 +156,11 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     const err = a.matchedErrorId ? plantedErrors.find(e => e.errorId === a.matchedErrorId) : null
     if (err) {
       const override = overrides[err.errorId]
-      const status = override === 'mark-missed' ? 'overruled missed' : (err.category === a.category ? 'correctly identified' : 'flagged with wrong category')
+      let status
+      if (override === 'mark-missed') status = 'reviewer manually marked missed'
+      else if (override === 'mark-identified') status = 'reviewer manually marked identified'
+      else if (err.category === a.category) status = 'correctly identified'
+      else status = 'wrong category'
       userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`)
     } else {
       userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (not a planted error): user wrote: "${a.explanation}"`)
