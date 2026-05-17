@@ -31,12 +31,12 @@ export default function AboutPanel({ onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center pt-12">
       <div className="glass-panel w-full max-w-xl max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 px-5 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--glass-accent)' }}>About Hallucination Autopsy</h2>
-          <button onClick={onClose} style={{ color: 'var(--glass-muted)' }}>&times;</button>
+        <div className="sticky top-0 px-5 py-3 flex items-center justify-between rounded-t-xl" style={{ background: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+          <h2 className="text-base font-semibold" style={{ color: '#2b5cad' }}>About Hallucination Autopsy</h2>
+          <button onClick={onClose} className="text-lg leading-none hover:opacity-70" style={{ color: '#718096' }}>&times;</button>
         </div>
 
-        <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
           {[
             { id: 'about', label: 'About' },
             { id: 'research', label: 'Research Foundation' },
@@ -49,8 +49,8 @@ export default function AboutPanel({ onClose }) {
               onClick={() => setTab(t.id)}
               className="flex-1 text-xs font-medium py-2.5 border-b-2 transition-colors"
               style={{
-                borderBottomColor: tab === t.id ? 'var(--glass-accent)' : 'transparent',
-                color: tab === t.id ? 'var(--glass-accent)' : 'var(--glass-secondary)',
+                borderBottomColor: tab === t.id ? '#2b5cad' : 'transparent',
+                color: tab === t.id ? '#2b5cad' : '#718096',
               }}
             >
               {t.label}
@@ -103,7 +103,7 @@ export default function AboutPanel({ onClose }) {
                 The taxonomy is drawn from and consistent with the classification frameworks
                 established in the following studies:
               </p>
-              <ol className="space-y-2 list-decimal pl-4 text-xs" style={{ color: 'var(--glass-secondary)' }}>
+              <ol className="space-y-2 list-decimal pl-4 text-xs" style={{ color: '#718096' }}>
                 {RESEARCH_CITATIONS.map(c => (
                   <li key={c.key} className="leading-relaxed">{c.text}</li>
                 ))}
@@ -121,7 +121,7 @@ export default function AboutPanel({ onClose }) {
 
           {tab === 'roadmap' && (
             <div className="space-y-5">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--glass-accent)' }}>Where This Is Going</h3>
+              <h3 className="text-sm font-semibold" style={{ color: '#2b5cad' }}>Where This Is Going</h3>
 
               <div>
                 <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Current</span>

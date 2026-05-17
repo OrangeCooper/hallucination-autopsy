@@ -24,7 +24,6 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [userSessions, setUserSessions] = useState([])
-  const [showAbout, setShowAbout] = useState(false)
   const { profile, sessions, updateFromSession: updateStoredSession } = useSkillProfile()
 
   useEffect(() => {
@@ -143,7 +142,7 @@ export default function App() {
         onTabChange={handleTabChange}
         user={user}
         onLogout={handleLogout}
-        onShowAbout={() => setShowAbout(true)}
+
         onNavigate={handleNavigate}
       />
       <main className="flex-1">

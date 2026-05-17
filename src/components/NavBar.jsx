@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import AboutPanel from './AboutPanel'
 
-export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavigate, onShowAbout }) {
+export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavigate }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [showAboutPanel, setShowAboutPanel] = useState(false)
   const dropdownRef = useRef(null)
@@ -21,17 +21,9 @@ export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavig
     { id: 'test', label: 'TEST' },
   ]
 
-  const handleAbout = () => {
-    if (onShowAbout) {
-      onShowAbout()
-    } else {
-      setShowAboutPanel(true)
-    }
-  }
-
   return (
     <>
-      <nav className="glass-panel rounded-none border-x-0 border-t-0 no-print" style={{ borderRadius: 0, background: 'rgba(255,255,255,0.65)' }}>
+      <nav className="glass-panel rounded-none border-x-0 border-t-0 no-print" style={{ borderRadius: 0, background: 'rgba(255,255,255,0.65)', zIndex: 40, position: 'relative' }}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-12">
             <div className="flex items-center gap-6">
@@ -61,11 +53,11 @@ export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavig
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
-                onClick={handleAbout}
-                className="text-[10px] underline hidden sm:inline"
-                style={{ color: '#718096' }}
+                onClick={() => setShowAboutPanel(true)}
+                className="px-2.5 py-1 text-[10px] font-medium rounded transition-all duration-150 hover:bg-black/5"
+                style={{ color: '#4a5568' }}
               >
                 About
               </button>
@@ -85,7 +77,7 @@ export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavig
                   </div>
                 </button>
                 {showDropdown && (
-                  <div className="glass-panel-elevated absolute right-0 mt-1.5 w-44 py-1 z-50">
+                  <div className="glass-panel-elevated absolute right-0 mt-1.5 w-44 py-1" style={{ zIndex: 100 }}>
                     <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider mb-1" style={{ color: '#718096', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                       {user ? user.name || user.email : 'Not signed in'}
                     </div>
@@ -99,15 +91,9 @@ export default function NavBar({ activeTab, onTabChange, user, onLogout, onNavig
                       Session Archive
                     </button>
                     <hr style={{ borderColor: 'rgba(0,0,0,0.08)', margin: '0.25rem 0' }} />
-                    {user ? (
-                      <button onClick={() => { setShowDropdown(false); onLogout() }} className="block w-full text-left px-3 py-1.5 text-xs hover:bg-black/5" style={{ color: '#c53030' }}>
-                        Logout
-                      </button>
-                    ) : (
-                      <button onClick={() => { setShowDropdown(false); onNavigate('login') }} className="block w-full text-left px-3 py-1.5 text-xs hover:bg-black/5" style={{ color: '#2b5cad' }}>
-                        Sign In
-                      </button>
-                    )}
+                    <button onClick={() => { setShowDropdown(false); onLogout() }} className="block w-full text-left px-3 py-1.5 text-xs hover:bg-black/5" style={{ color: '#c53030' }}>
+                      Logout
+                    </button>
                   </div>
                 )}
               </div>
