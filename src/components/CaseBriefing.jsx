@@ -1,16 +1,13 @@
-import { useState } from 'react'
 import { ERROR_CATEGORIES } from '../data/errorCategories'
 import TutorialCallout from './TutorialCallout'
 
 export default function CaseBriefing({ scenario, onBegin, isTutorial }) {
-  const [showTaxonomy, setShowTaxonomy] = useState(false)
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="glass-panel p-6 space-y-6">
         <div>
-          <h1 className="text-lg font-semibold text-navy-500">{scenario.title}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Case Briefing</p>
+          <h1 className="text-lg font-semibold" style={{ color: '#1a2540' }}>{scenario.title}</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#4a5568' }}>Case Briefing</p>
         </div>
 
         <div className="glass-panel rounded overflow-hidden">
@@ -22,9 +19,9 @@ export default function CaseBriefing({ scenario, onBegin, isTutorial }) {
                 ['Practice Area', scenario.practiceArea],
                 ['Complexity', scenario.complexity],
               ].map(([label, value]) => (
-                <tr key={label} className="border-b border-gray-200 last:border-0">
-                  <td className="px-4 py-2 text-gray-500 font-medium w-1/3">{label}</td>
-                  <td className="px-4 py-2 text-gray-900">{value}</td>
+                <tr key={label} className="border-b last:border-0" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+                  <td className="px-4 py-2 font-medium w-1/3" style={{ color: '#718096' }}>{label}</td>
+                  <td className="px-4 py-2" style={{ color: '#1a202c' }}>{value}</td>
                 </tr>
               ))}
             </tbody>
@@ -32,43 +29,36 @@ export default function CaseBriefing({ scenario, onBegin, isTutorial }) {
         </div>
 
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-1">AI Task Description</h3>
-          <p className="text-sm p-3 rounded" style={{ color: 'var(--glass-primary)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#1a2540' }}>AI Task Description</h3>
+          <p className="text-sm p-3 rounded leading-relaxed" style={{ color: '#1a2540', background: 'rgba(43,92,173,0.05)', border: '1px solid rgba(43,92,173,0.12)' }}>
             {scenario.aiTaskDescription}
           </p>
         </div>
 
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Your Role</h3>
-          <p className="text-sm p-3 rounded" style={{ color: 'var(--glass-primary)', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#1a2540' }}>Your Role</h3>
+          <p className="text-sm p-3 rounded leading-relaxed" style={{ color: '#1a2540', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.15)' }}>
             {scenario.assumedRole}
           </p>
         </div>
 
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Professional Stakes</h3>
-          <p className="text-sm p-3 rounded" style={{ color: 'var(--glass-primary)', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#1a2540' }}>Professional Stakes</h3>
+          <p className="text-sm p-3 rounded leading-relaxed" style={{ color: '#1a2540', background: 'rgba(197,48,48,0.06)', border: '1px solid rgba(197,48,48,0.12)' }}>
             {scenario.professionalStakes}
           </p>
         </div>
 
         <div>
-          <button
-            onClick={() => setShowTaxonomy(!showTaxonomy)}
-            className="text-sm text-navy-500 underline hover:text-navy-600 transition-colors"
-          >
-            {showTaxonomy ? 'Hide' : 'View'} Error Category Reference
-          </button>
-          {showTaxonomy && (
-            <div className="mt-2 space-y-2">
-              {ERROR_CATEGORIES.map(cat => (
-                <div key={cat.id} className="p-2 glass-panel">
-                  <div className="text-xs font-medium text-gray-700">{cat.label}</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--glass-secondary)' }}>{cat.definition}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          <h3 className="text-sm font-medium mb-2" style={{ color: '#1a2540' }}>Error Category Reference</h3>
+          <div className="space-y-1.5">
+            {ERROR_CATEGORIES.map(cat => (
+              <div key={cat.id} className="p-2.5 rounded text-xs leading-relaxed" style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                <span className="font-medium" style={{ color: '#2b5cad' }}>{cat.label}:</span>{' '}
+                <span style={{ color: '#4a5568' }}>{cat.definition}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {isTutorial && (

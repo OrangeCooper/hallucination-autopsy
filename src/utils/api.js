@@ -298,6 +298,9 @@ Return ONLY this JSON (no markdown, no backticks):
   "documentType": "${config.documentType}",
   "difficulty": "${config.difficulty}",
   "jurisdiction": "${config.jurisdiction || 'General'}",
+  "aiTaskDescription": "2-3 sentences. What the AI was asked to do: describe the specific legal task, document purpose, and the analytical work required. Must reference the practice area, document type, and jurisdiction.",
+  "assumedRole": "1-2 sentences. The reviewer's role in this context. E.g. 'You are a second-year litigation associate asked to verify a motion memo before filing in the Northern District of California.' Must reference the practice area and document type.",
+  "professionalStakes": "1-2 sentences. What is at stake if errors go undetected. Must be concrete and specific to the practice area, e.g. financial exposure, precedential harm, regulatory penalty, or client detriment.",
   "document": "Document text with double newlines between paragraphs. 400+ words.",
   "errors": [
     {
@@ -329,6 +332,16 @@ Generate ${catList.length} errors, one per category. Every error must be concret
 
       if (!parsed.document || !parsed.errors || parsed.errors.length === 0) {
         throw new Error('Missing required fields')
+      }
+
+      if (!parsed.aiTaskDescription) {
+        parsed.aiTaskDescription = `The AI was asked to draft a ${parsed.documentType || config.documentType} addressing ${parsed.practiceArea || config.practiceArea} law under ${parsed.jurisdiction || config.jurisdiction || 'the relevant jurisdiction'}.`
+      }
+      if (!parsed.assumedRole) {
+        parsed.assumedRole = `You are reviewing an AI-generated ${parsed.documentType || config.documentType} for accuracy in the area of ${parsed.practiceArea || config.practiceArea} law.`
+      }
+      if (!parsed.professionalStakes) {
+        parsed.professionalStakes = `Errors in this document could lead to incorrect legal advice, adverse rulings, or professional liability.`
       }
 
       const wordCount = parsed.document.split(/\s+/).length
