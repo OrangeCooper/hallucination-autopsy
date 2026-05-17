@@ -145,9 +145,10 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const userFound = semanticAnnotations.filter(a => a.result === 'Identified' || a.result === 'Identified (wrong category)' || a.result === 'Identified (overruled)').length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
-  const userDescriptions = (rawAnnotations || [])
+  const userDescriptions = (userAnnotations || [])
+    .filter(a => a.matchedErrorId)
     .map(a => {
-      const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
+      const err = plantedErrors.find(e => e.errorId === a.matchedErrorId)
       if (!err) return null
       const override = overrides[err.errorId]
       const status = override === 'mark-missed' ? 'overruled missed' : (err.category === a.category ? 'correctly identified' : 'flagged with wrong category')
