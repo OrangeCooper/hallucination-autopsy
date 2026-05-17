@@ -22,15 +22,15 @@ export function scoreParagraphAnnotations(annotations, plantedErrors) {
     }
   })
 
-  const identifiedErrorIds = new Set(
-    matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId)
-  )
-
   const wrongCategoryErrors = new Set(
     matchedAnnotations.filter(a => a.matchedErrorId && a.wrongCategory).map(a => a.matchedErrorId)
   )
 
-  const missedErrors = plantedErrors.filter(e => !identifiedErrorIds.has(e.errorId))
+  const identifiedErrorIds = new Set(
+    matchedAnnotations.filter(a => a.matchedErrorId && !a.wrongCategory).map(a => a.matchedErrorId)
+  )
+
+  const missedErrors = plantedErrors.filter(e => !identifiedErrorIds.has(e.errorId) && !wrongCategoryErrors.has(e.errorId))
   const falsePositives = matchedAnnotations.filter(a => !a.matchedErrorId)
 
   return { matchedAnnotations, identifiedErrors: identifiedErrorIds, wrongCategoryErrors, missedErrors, falsePositives }

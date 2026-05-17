@@ -65,7 +65,7 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
     }
     let cancelled = false
     setSummaryLoading(true)
-    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations)
+    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations, overrides)
       .then(text => { if (!cancelled) setSummary(text) })
       .catch(() => { if (!cancelled) setSummary(null) })
       .finally(() => { if (!cancelled) setSummaryLoading(false) })

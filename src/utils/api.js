@@ -99,22 +99,36 @@ function sanitizeSummary(text) {
   return clean
 }
 
-function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
+function buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides = {}) {
   const userMap = new Map()
   userAnnotations.forEach(a => {
     if (a.matchedErrorId) userMap.set(a.matchedErrorId, a)
   })
 
   return plantedErrors.map(e => {
+    const ann = userMap.get(e.errorId)
+    const override = overrides[e.errorId]
+
+    let result
+    if (override === 'mark-missed') {
+      result = 'Missed (overruled)'
+    } else if (override === 'mark-identified') {
+      result = 'Identified (overruled)'
+    } else if (ann) {
+      result = ann.wrongCategory ? 'Identified (wrong category)' : 'Identified'
+    } else {
+      result = 'Missed'
+    }
+
     return {
       paragraphNumber: e.paragraphNumber || '?',
       errorCategory: e.category.replace(/-/g, ' '),
-      result: userMap.has(e.errorId) ? 'Identified' : 'Missed',
+      result,
     }
   })
 }
 
-export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations) {
+export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations, overrides = {}) {
   const systemPrompt = `You are a supervising partner reviewing an associate's supervision of AI-generated legal work.
 
 Do NOT reference internal identifiers, annotation IDs, coordinates, offsets, labels, or technical metadata.
@@ -127,16 +141,19 @@ Refer only to:
 
 Write in professional analytical prose. No exclamation marks. No gamified language.`
 
-  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations)
-  const userFound = semanticAnnotations.filter(a => a.result === 'Identified').length
+  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides)
+  const userFound = semanticAnnotations.filter(a => a.result === 'Identified' || a.result === 'Identified (wrong category)' || a.result === 'Identified (overruled)').length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
   const userDescriptions = (rawAnnotations || [])
-    .filter(a => a.matchedErrorId)
     .map(a => {
-      const err = plantedErrors.find(e => e.errorId === a.matchedErrorId)
-      return `- Paragraph ${a.paragraphNumber} (${err ? err.category.replace(/-/g, ' ') : 'unknown'}): user wrote: "${a.explanation}"`
+      const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
+      if (!err) return null
+      const override = overrides[err.errorId]
+      const status = override === 'mark-missed' ? 'overruled missed' : (err.category === a.category ? 'correctly identified' : 'flagged with wrong category')
+      return `- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`
     })
+    .filter(Boolean)
     .join('\n')
 
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
@@ -146,10 +163,10 @@ ${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber}: ${a.errorCateg
 
 The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.
 
-What the associate wrote about each identified error:
-${userDescriptions || '(none written)'}
+What the associate wrote about each flagged passage:
+${userDescriptions || '(nothing written by user)'}
 
-Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. Reference specific paragraph numbers and error categories the associate handled well or missed. Where the associate's explanation was incorrect or incomplete, note the misunderstanding and provide guidance. Reference document context, not internal identifiers.`
+Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. Reference specific paragraph numbers and error categories the associate handled well or missed. Where the associate's explanation was incorrect or incomplete, note the misunderstanding and provide guidance. Where the associate correctly identified an error but assigned the wrong category, note this as a category recognition issue. Reference document context, not internal identifiers.`
 
   const raw = await callOpenRouter([{ role: 'user', content: prompt }], systemPrompt)
   return sanitizeSummary(raw)
