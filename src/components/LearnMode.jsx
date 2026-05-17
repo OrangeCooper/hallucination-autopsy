@@ -91,7 +91,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {showIntro && (
-        <div className="mb-6 card p-4 border-l-4 border-l-navy-500 bg-gradient-to-r from-navy-50 to-white">
+        <div className="mb-6 glass-panel p-4 border-l-navy-500">
           <p className="text-sm text-gray-600 leading-relaxed">
             Hallucination Autopsy builds your ability to detect errors in AI-generated legal documents.
             Configure a scenario below, generate it via AI, then review and annotate the document.
@@ -101,7 +101,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
       )}
 
       {isTutorial && (
-        <div className="mb-6 card p-5 border-l-4 border-l-navy-500">
+        <div className="mb-6 glass-panel p-5 border-l-navy-500">
           <h3 className="text-sm font-medium text-navy-700 mb-1">Welcome to the Guided Tour</h3>
           <p className="text-xs text-gray-600 mb-3">
             This walkthrough guides you through the full Hallucination Autopsy workflow.
@@ -120,7 +120,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
         <div className="mb-4">
           <button
             onClick={() => onStartScenario(TUTORIAL_SCENARIO, 'tutorial')}
-            className="text-xs border border-navy-300 text-navy-600 rounded px-3 py-1.5 hover:bg-navy-50 transition-colors"
+            className="btn-secondary btn-small"
           >
             Take a Guided Tour
           </button>
@@ -129,21 +129,21 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
-          <div className="card p-5">
+          <div className="glass-panel p-5">
             <h2 className="text-sm font-medium text-gray-700 mb-3">Configure Scenario</h2>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Practice Area</label>
                 <select value={practiceArea} onChange={e => setPracticeArea(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs glass-select">
                   {PRACTICE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Document Type</label>
                 <select value={documentType} onChange={e => setDocumentType(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs glass-select">
                   {DOCUMENT_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -152,14 +152,14 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Jurisdiction</label>
                 <select value={jurisdiction} onChange={e => setJurisdiction(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs glass-select">
                   {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Difficulty</label>
                 <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs glass-select">
                   {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -172,7 +172,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
               <div className="grid grid-cols-2 gap-1.5">
                 {ERROR_CATEGORIES.map(cat => (
                   <label key={cat.id} className="flex items-center gap-2 text-xs cursor-pointer p-1.5 rounded hover:bg-gray-50">
-                    <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} className="rounded" />
+                    <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} className="glass-checkbox" />
                     <span className="text-gray-700">{cat.label}</span>
                   </label>
                 ))}
@@ -185,13 +185,13 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
           </div>
 
           {generatedScenario && (
-            <div className="card p-5 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+            <div className="glass-panel p-5 border-l-4 border-l-green-500">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Scenario Ready</h3>
               <div className="text-xs text-gray-600 space-y-1 mb-3">
                 <p><strong>{generatedScenario.title}</strong></p>
                 <p>{generatedScenario.practiceArea} &middot; {generatedScenario.documentType} &middot; {generatedScenario.jurisdiction}</p>
                 <p>{generatedScenario.plantedErrors.length} error{generatedScenario.plantedErrors.length !== 1 ? 's' : ''} planted</p>
-                <ul className="list-disc pl-4 text-gray-500 space-y-0.5 mt-1">
+                <ul className="list-disc pl-4 space-y-0.5 mt-1" style={{ color: 'var(--glass-secondary)' }}>
                   {generatedScenario.plantedErrors.map((e, i) => (
                     <li key={i}>{e.category.replace(/-/g, ' ')}</li>
                   ))}
@@ -203,7 +203,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
         </div>
 
         <div className="space-y-4">
-          <div className="card p-4">
+          <div className="glass-panel p-4">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Recommended Focus</h3>
             {recommendation ? (
               <div className="text-sm text-gray-700">
@@ -216,7 +216,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
               <p className="text-sm text-gray-400">Complete sessions to get recommendations.</p>
             )}
           </div>
-          <div className="card p-4">
+          <div className="glass-panel p-4">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Session Stats</h3>
             {profile?.sessionsCompleted > 0 ? (
               <div className="text-xs text-gray-600 space-y-1">
@@ -227,7 +227,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
               <p className="text-sm text-gray-400">No sessions yet.</p>
             )}
           </div>
-          <div className="card p-4">
+          <div className="glass-panel p-4">
             <SkillRadarChart profile={profile} compact />
             {profile?.sessionsCompleted > 0 && (
               <button onClick={onViewSkillProfile} className="mt-2 text-xs text-navy-500 underline hover:text-navy-600">

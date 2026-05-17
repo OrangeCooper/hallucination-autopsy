@@ -123,6 +123,11 @@ export default function App() {
     setActiveTab('learn')
   }, [])
 
+  const handleContinueToTestMode = useCallback(() => {
+    setScreen('test')
+    setActiveTab('test')
+  }, [])
+
   const handleTutorialExit = useCallback(() => {
     setLastAnnotations(null)
     setSelectedScenario(null)
@@ -132,7 +137,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col" style={{ background: 'transparent' }}>
       <NavBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -160,6 +165,8 @@ export default function App() {
           <TestMode
             profile={{ ...effectiveProfile, sessions: effectiveSessions }}
             onStartScenario={handleStartScenario}
+            isTutorial={currentMode === 'tutorial'}
+            onViewSkillProfile={handleViewSkillProfileInTutorial}
           />
         )}
 
@@ -185,7 +192,7 @@ export default function App() {
             annotations={lastAnnotations}
             onBackToDashboard={handleSaveAndExit}
             isTutorial={currentMode === 'tutorial'}
-            onViewSkillProfile={handleViewSkillProfileInTutorial}
+            onViewSkillProfile={handleContinueToTestMode}
           />
         )}
 
@@ -216,7 +223,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="text-center text-[10px] text-gray-400 py-3 px-4 border-t border-gray-200 leading-relaxed bg-white">
+      <footer className="text-center text-[10px] py-3 px-4 leading-relaxed" style={{ color: 'var(--glass-muted)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         Hallucination Autopsy contains no real client data. All legal scenarios are entirely fictional and synthetic.
         Nothing on this platform constitutes legal advice. All AI-generated explanations should be independently
         verified against primary legal sources.

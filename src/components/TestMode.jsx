@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { ERROR_CATEGORIES } from '../data/errorCategories'
 import { generateScenario } from '../utils/api'
 import ScenarioLoadingScreen, { ScenarioErrorScreen } from './ScenarioLoadingScreen'
+import TutorialCallout from './TutorialCallout'
 
 const PRACTICE_AREAS = [
   'Constitutional', 'Corporate', 'Securities', 'Employment',
@@ -18,7 +19,7 @@ const JURISDICTIONS = [
   'Multi-jurisdictional',
 ]
 
-export default function TestMode({ profile, onStartScenario }) {
+export default function TestMode({ profile, onStartScenario, isTutorial, onViewSkillProfile }) {
   const [practiceArea, setPracticeArea] = useState('')
   const [difficulty, setDifficulty] = useState('Standard')
   const [jurisdiction, setJurisdiction] = useState('')
@@ -74,20 +75,31 @@ export default function TestMode({ profile, onStartScenario }) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      <h1 className="text-lg font-semibold text-navy-500 mb-1">TEST Mode</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Simulation-based evaluation. Error types are selected adaptively based on your weak categories.
-      </p>
+      {isTutorial && (
+        <div className="mb-6">
+          <TutorialCallout instruction="Test Mode generates scenarios weighted toward your weak categories. It adapts to your skill profile and tracks results across sessions. In the guided tour, this screen shows what Test Mode looks like — click View Skill Profile to continue." />
+          <button onClick={onViewSkillProfile} className="btn-primary mt-3">View Skill Profile</button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {!isTutorial && (
+        <>
+          <h1 className="text-lg font-semibold text-navy-500 mb-1">TEST Mode</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Simulation-based evaluation. Error types are selected adaptively based on your weak categories.
+          </p>
+        </>
+      )}
+
+      {!isTutorial && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="card p-5">
+          <div className="glass-panel p-5">
             <h2 className="text-sm font-medium text-gray-700 mb-3">Generate Test</h2>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Area of Law</label>
                 <select value={practiceArea} onChange={e => { setPracticeArea(e.target.value); setGeneratedScenario(null) }}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white glass-select">
                   <option value="">Random</option>
                   {PRACTICE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
@@ -95,7 +107,7 @@ export default function TestMode({ profile, onStartScenario }) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Jurisdiction</label>
                 <select value={jurisdiction} onChange={e => { setJurisdiction(e.target.value); setGeneratedScenario(null) }}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white glass-select">
                   <option value="">Random</option>
                   {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
                 </select>
@@ -103,18 +115,18 @@ export default function TestMode({ profile, onStartScenario }) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Difficulty</label>
                 <select value={difficulty} onChange={e => { setDifficulty(e.target.value); setGeneratedScenario(null) }}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white">
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white glass-select">
                   {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
             </div>
 
             {weaknessCategories.length > 0 && (
-              <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+              <div className="mb-3 p-2 rounded text-xs" style={{background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', color: 'var(--glass-warning)'}}>
                 <strong>Adaptive focus:</strong> generating errors weighted toward your weak areas
                 <div className="flex flex-wrap gap-1 mt-1">
                   {weaknessCategories.map(c => (
-                    <span key={c} className="text-[10px] bg-amber-100 rounded px-1 py-0.5">{c.replace(/-/g, ' ')}</span>
+                    <span key={c} className="text-[10px] rounded px-1 py-0.5" style={{background: 'rgba(251,191,36,0.15)', color: 'var(--glass-warning)'}}>{c.replace(/-/g, ' ')}</span>
                   ))}
                 </div>
               </div>
@@ -125,7 +137,7 @@ export default function TestMode({ profile, onStartScenario }) {
             </button>
 
             {generatedScenario && (
-              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+              <div className="p-3 glass-panel">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-medium text-gray-700">{generatedScenario.title}</div>
                   <span className="tag-gray text-xs">{generatedScenario.complexity}</span>
@@ -135,7 +147,7 @@ export default function TestMode({ profile, onStartScenario }) {
                 </div>
                 <div className="flex flex-wrap gap-1 mb-3">
                   {generatedScenario.plantedErrors.map((e, i) => (
-                    <span key={i} className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                    <span key={i} className="text-[10px] rounded px-1.5 py-0.5" style={{background: 'rgba(251,191,36,0.1)', color: 'var(--glass-warning)', border: '1px solid rgba(251,191,36,0.2)'}}>
                       {e.category.replace(/-/g, ' ')}
                     </span>
                   ))}
@@ -147,7 +159,7 @@ export default function TestMode({ profile, onStartScenario }) {
         </div>
 
         <div>
-          <div className="card p-4 space-y-3">
+          <div className="glass-panel p-4 space-y-3">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Test Environment</h3>
             <ul className="text-xs text-gray-600 space-y-1.5 list-disc pl-3">
               <li>Adaptive error selection</li>
@@ -163,13 +175,13 @@ export default function TestMode({ profile, onStartScenario }) {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
-      {generating && (
+      {!isTutorial && generating && (
         <ScenarioLoadingScreen onRetry={handleGenerate} />
       )}
 
-      {error && !generating && (
+      {!isTutorial && error && !generating && (
         <ScenarioErrorScreen message={error} onRetry={handleGenerate} onBack={() => setError(null)} />
       )}
     </div>

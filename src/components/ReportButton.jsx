@@ -42,13 +42,14 @@ export default function ReportButton({ scenarioId, errorId }) {
     <div className="mt-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-sm text-gray-500 underline hover:text-gray-700 transition-colors"
+        className="text-sm underline"
+        style={{ color: 'var(--glass-secondary)' }}
       >
         Report an issue with this explanation
       </button>
 
       {reportCount >= 3 && (
-        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+        <div className="mt-2 p-2 rounded text-xs" style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', color: 'var(--glass-warning)' }}>
           Community Flag: This explanation has been flagged by multiple users as potentially containing an error.
           It has not been independently verified. Do not rely on this explanation without conducting your own
           primary source research.
@@ -56,8 +57,8 @@ export default function ReportButton({ scenarioId, errorId }) {
       )}
 
       {expanded && (
-        <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded space-y-2">
-          <p className="text-xs font-medium text-gray-700">What issue are you reporting?</p>
+        <div className="mt-2 p-3 glass-panel-elevated space-y-2">
+          <p className="text-xs font-medium" style={{ color: 'var(--glass-primary)' }}>What issue are you reporting?</p>
           {ISSUE_CATEGORIES.map(cat => (
             <label key={cat.value} className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
               <input
@@ -66,7 +67,7 @@ export default function ReportButton({ scenarioId, errorId }) {
                 value={cat.value}
                 checked={selectedCategory === cat.value}
                 onChange={() => setSelectedCategory(cat.value)}
-                className="mt-0.5"
+                className="glass-radio mt-0.5"
               />
               {cat.label}
             </label>
@@ -77,7 +78,7 @@ export default function ReportButton({ scenarioId, errorId }) {
               onChange={e => setUserText(e.target.value)}
               placeholder="Describe the issue or provide a correction..."
               maxLength={500}
-              className="w-full text-xs border border-gray-200 rounded p-2 resize-none h-16"
+              className="w-full text-xs glass-textarea resize-none h-16"
             />
           )}
           <div className="flex gap-2">

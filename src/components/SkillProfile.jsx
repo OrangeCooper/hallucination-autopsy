@@ -62,7 +62,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
       )}
 
       {profile.sessionsCompleted === 0 && !isTutorial ? (
-        <div className="card p-8 text-center">
+        <div className="glass-panel p-8 text-center">
           <p className="text-sm text-gray-400">
             No sessions completed yet. Complete a review session to see your skill profile.
           </p>
@@ -76,7 +76,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
               { label: 'Errors Encountered', value: profile.totalEncountered },
               { label: 'Overall Detection Rate', value: profile.totalEncountered > 0 ? `${Math.round((profile.totalIdentified / profile.totalEncountered) * 100)}%` : 'N/A' },
             ].map(s => (
-              <div key={s.label} className="card p-4 text-center">
+              <div key={s.label} className="glass-panel p-4 text-center">
                 <div className="text-2xl font-semibold text-navy-500">{s.value}</div>
                 <div className="text-xs text-gray-500 mt-1">{s.label}</div>
               </div>
@@ -84,7 +84,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
           </div>
 
           {/* Radar chart */}
-          <div className="card p-5">
+          <div className="glass-panel p-5">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
               Detection Rate by Error Category
             </h3>
@@ -92,10 +92,10 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
           </div>
 
           {/* Category detail table */}
-          <div className="card overflow-hidden">
+          <div className="glass-panel overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
+                <tr className="border-b" style={{borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)'}}>
                   <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Category</th>
                   <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 uppercase">Encountered</th>
                   <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 uppercase">Detection Rate</th>
@@ -111,7 +111,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
                   const trend = getTrend(cat.id)
 
                   return (
-                    <tr key={cat.id} className="border-b border-gray-100 last:border-0">
+                    <tr key={cat.id} className="last:border-0" style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
                       <td className="px-4 py-2.5 text-gray-700">{cat.label}</td>
                       <td className="px-4 py-2.5 text-center text-gray-600">{stats?.encountered || 0}</td>
                       <td className="px-4 py-2.5 text-center">
@@ -136,7 +136,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
           </div>
 
           {/* Development advice */}
-          <div className="card p-5">
+          <div className="glass-panel p-5">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-sm font-medium text-gray-700">Identified Development Areas</h3>
               <span className="tag-gray text-[10px]">AI-generated — verify independently</span>
@@ -153,8 +153,8 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
           </div>
 
           {/* Session History */}
-          <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
+          <div className="glass-panel overflow-hidden">
+            <div className="px-4 py-3" style={{borderBottom: '1px solid rgba(255,255,255,0.08)'}}>
               <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Session History</h3>
             </div>
             {sessions.length === 0 ? (
@@ -162,7 +162,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
+                  <tr className="border-b" style={{borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)'}}>
                     <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 uppercase">Scenario</th>
                     <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 uppercase">Complexity</th>
@@ -173,7 +173,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
                 </thead>
                 <tbody>
                   {sessions.map((s, i) => (
-                    <tr key={i} className="border-b border-gray-100 last:border-0">
+                    <tr key={i} className="last:border-0" style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
                       <td className="px-4 py-2 text-gray-600">{new Date(s.date).toLocaleDateString()}</td>
                       <td className="px-4 py-2 text-gray-700">{s.scenarioTitle}</td>
                       <td className="px-4 py-2 text-center text-gray-600">{s.complexity}</td>
@@ -202,8 +202,8 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
       )}
 
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-5 w-80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background: 'rgba(0,0,0,0.5)'}}>
+          <div className="glass-panel-elevated p-5 w-80">
             <p className="text-sm text-gray-700">
               This will permanently delete your session history and skill profile data. This action cannot be undone.
             </p>

@@ -84,7 +84,7 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
   })
 }
 
-export async function generateReviewSummary(scenario, userAnnotations, plantedErrors) {
+export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations) {
   const systemPrompt = `You are a supervising partner reviewing an associate's supervision of AI-generated legal work.
 
 Do NOT reference internal identifiers, annotation IDs, coordinates, offsets, labels, or technical metadata.
@@ -101,6 +101,14 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const userFound = semanticAnnotations.filter(a => a.result === 'Identified').length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
+  const userDescriptions = (rawAnnotations || [])
+    .filter(a => a.matchedErrorId)
+    .map(a => {
+      const err = plantedErrors.find(e => e.errorId === a.matchedErrorId)
+      return `- Paragraph ${a.paragraphNumber} (${err ? err.category.replace(/-/g, ' ') : 'unknown'}): user wrote: "${a.explanation}"`
+    })
+    .join('\n')
+
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
 Planted errors (${plantedErrors.length} total):
@@ -108,7 +116,10 @@ ${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber}: ${a.errorCateg
 
 The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.
 
-Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. Reference specific paragraph numbers and error categories the associate handled well or missed. Reference document context, not internal identifiers.`
+What the associate wrote about each identified error:
+${userDescriptions || '(none written)'}
+
+Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. Reference specific paragraph numbers and error categories the associate handled well or missed. Where the associate's explanation was incorrect or incomplete, note the misunderstanding and provide guidance. Reference document context, not internal identifiers.`
 
   const raw = await callOpenRouter([{ role: 'user', content: prompt }], systemPrompt)
   return sanitizeSummary(raw)

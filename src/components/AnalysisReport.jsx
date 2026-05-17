@@ -7,7 +7,6 @@ import { generateReviewSummary, generateFollowUpAnswer } from '../utils/api'
 export default function AnalysisReport({ scenario, annotations, onBackToDashboard, isTutorial, onViewSkillProfile }) {
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
-  const [followUps, setFollowUps] = useState({})
   const [hoveredError, setHoveredError] = useState(null)
   const [overrides, setOverrides] = useState({})
   const overridesRef = useRef(overrides)
@@ -66,34 +65,12 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
     }
     let cancelled = false
     setSummaryLoading(true)
-    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors)
+    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations)
       .then(text => { if (!cancelled) setSummary(text) })
       .catch(() => { if (!cancelled) setSummary(null) })
       .finally(() => { if (!cancelled) setSummaryLoading(false) })
     return () => { cancelled = true }
   }, [scenario, summaryAnnotations, isTutorial])
-
-  const handleFollowUp = async (errorId, question) => {
-    const error = scenario.plantedErrors.find(e => e.errorId === errorId)
-    if (!error || !question.trim()) return
-    const prevMessages = followUps[errorId]?.messages || []
-    setFollowUps(prev => ({
-      ...prev,
-      [errorId]: { messages: [...prevMessages, { role: 'user', text: question }], loading: true },
-    }))
-    try {
-      const answer = await generateFollowUpAnswer(error.category, error.explanation, scenario.title, question, prevMessages)
-      setFollowUps(prev => ({
-        ...prev,
-        [errorId]: { messages: [...prev[errorId].messages, { role: 'assistant', text: answer }], loading: false },
-      }))
-    } catch {
-      setFollowUps(prev => ({
-        ...prev,
-        [errorId]: { ...prev[errorId], loading: false, error: true },
-      }))
-    }
-  }
 
   const renderAnnotatedDoc = () => {
     const matchedByParagraph = {}
@@ -149,10 +126,10 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
   })
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <div className="card p-4 mb-6">
-        <h2 className="text-base font-semibold text-navy-500 mb-2">Analysis Report</h2>
-        <p className="text-sm text-gray-700">
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="glass-panel p-4">
+        <h2 className="text-base font-semibold mb-2" style={{ color: 'var(--glass-accent)' }}>Analysis Report</h2>
+        <p className="text-sm" style={{ color: 'var(--glass-primary)' }}>
           Your review identified <strong>{identifiedErrors.size}</strong> of{' '}
           <strong>{scenario.plantedErrors.length}</strong> planted issues.
           {falsePositives.length > 0 && (
@@ -160,7 +137,7 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
           )}
         </p>
         {overrideCount > 0 && (
-          <p className="text-xs text-amber-700 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--glass-warning)' }}>
             {overrideCount} manual override{overrideCount !== 1 ? 's' : ''} applied
             {overrideMissed > 0 && ` (${overrideMissed} marked missed`}
             {overrideMissed > 0 && overrideIdentified > 0 ? ', ' : ''}
@@ -170,32 +147,32 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
         )}
         <div className="flex flex-wrap gap-2 mt-3">
           {categoryBreakdown.map(cat => (
-            <div key={cat.id} className="flex items-center gap-1 text-xs">
-              {cat.status === 'not-present' && <span className="w-2 h-2 rounded-full bg-gray-300" />}
-              {cat.status === 'identified' && <span className="w-2 h-2 rounded-full bg-green-500" />}
-              {cat.status === 'missed' && <span className="w-2 h-2 rounded-full bg-red-500" />}
-              {cat.status === 'partial' && <span className="w-2 h-2 rounded-full bg-amber-500" />}
-              <span className="text-gray-600">{cat.label}</span>
+            <div key={cat.id} className="flex items-center gap-1 text-xs" style={{ color: 'var(--glass-secondary)' }}>
+              {cat.status === 'not-present' && <span className="w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.25)' }} />}
+              {cat.status === 'identified' && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--glass-success)' }} />}
+              {cat.status === 'missed' && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--glass-error)' }} />}
+              {cat.status === 'partial' && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--glass-warning)' }} />}
+              <span>{cat.label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="card p-6 mb-6 no-print">
-        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Annotated Document</h3>
-        <div className="document-text text-gray-900 whitespace-pre-wrap bg-gray-50 p-6 rounded border border-gray-200">
+      <div className="glass-panel p-6 no-print">
+        <h3 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: 'var(--glass-muted)' }}>Annotated Document</h3>
+        <div className="document-text whitespace-pre-wrap rounded border p-6 document-viewer" style={{ background: '#fff', border: 'none' }}>
           {renderAnnotatedDoc()}
         </div>
-        <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
-          <span><span className="inline-block w-3 h-3 bg-green-200/60 rounded mr-1 align-middle" /> Correctly identified</span>
-          <span><span className="inline-block w-3 h-3 bg-red-200/60 rounded mr-1 align-middle" /> Missed</span>
-          <span><span className="inline-block w-3 h-3 bg-amber-200/60 rounded mr-1 align-middle" /> Wrong category</span>
-          <span><span className="inline-block w-3 h-3 bg-yellow-200/60 rounded mr-1 align-middle" /> Not a planted error</span>
+        <div className="flex flex-wrap gap-4 mt-3 text-xs" style={{ color: 'var(--glass-secondary)' }}>
+          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(110,231,183,0.4)' }} /> Correctly identified</span>
+          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(248,113,113,0.4)' }} /> Missed</span>
+          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(251,191,36,0.4)' }} /> Wrong category</span>
+          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(251,191,36,0.4)' }} /> Not a planted error</span>
         </div>
       </div>
 
-      <div className="space-y-4 mb-6">
-        <h3 className="text-sm font-medium text-gray-700">Error Analysis</h3>
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium" style={{ color: 'var(--glass-primary)' }}>Error Analysis</h3>
         {scenario.plantedErrors.map((error, idx) => (
           <ErrorPanel
             key={error.errorId}
@@ -207,15 +184,13 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
             autoMatch={autoMatch}
             overridesRef={overridesRef}
             onOverride={handleOverride}
-            followUps={followUps}
-            onFollowUp={handleFollowUp}
           />
         ))}
       </div>
 
-      <div className="card p-5 mb-6">
+      <div className="glass-panel p-5">
         <div className="flex items-center gap-2 mb-3">
-          <h3 className="text-sm font-medium text-gray-700">Written Review Summary</h3>
+          <h3 className="text-sm font-medium" style={{ color: 'var(--glass-primary)' }}>Written Review Summary</h3>
           <span className="tag-gray text-[10px]">AI-generated — verify independently</span>
         </div>
         {summaryLoading ? (
@@ -225,15 +200,15 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
             <div className="shimmer-block h-3 w-3/4" />
           </div>
         ) : summary ? (
-          <p className="text-sm text-gray-700 leading-relaxed animate-fade-in">{summary}</p>
+          <p className="text-sm leading-relaxed animate-fade-in" style={{ color: 'var(--glass-primary)' }}>{summary}</p>
         ) : (
-          <p className="text-sm text-gray-500 italic animate-fade-in">Analysis could not be generated at this time. The AI service may be unavailable. Please review the explanation panels above directly.</p>
+          <p className="text-sm italic animate-fade-in" style={{ color: 'var(--glass-secondary)' }}>Analysis could not be generated at this time. The AI service may be unavailable. Please review the explanation panels above directly.</p>
         )}
       </div>
 
       <div className="flex justify-center gap-3">
         {isTutorial ? (
-          <button onClick={onViewSkillProfile} className="btn-primary">View Skill Profile</button>
+          <button onClick={onViewSkillProfile} className="btn-primary">Continue to Test Mode</button>
         ) : (
           <button onClick={() => onBackToDashboard(annotations, overrides, new Set(identifiedErrors))} className="btn-secondary">Save &amp; Return</button>
         )}
@@ -242,11 +217,13 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
   )
 }
 
-function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRef, onOverride, followUps, onFollowUp, paragraphs }) {
+function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRef, onOverride, paragraphs }) {
   const [localOverride, setLocalOverride] = useState(null)
+  const [conversation, setConversation] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [followUpError, setFollowUpError] = useState(null)
   const userAnn = autoMatch.matchedAnnotations.find(a => a.matchedErrorId === error.errorId)
   const wrongCategory = userAnn && userAnn.category !== error.category
-  const fu = followUps[error.errorId]
   const paragraphText = paragraphs?.[error.paragraphNumber - 1] || ''
 
   const effectiveIdentified = localOverride !== null
@@ -267,13 +244,28 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
     }
   }
 
+  const handleAsk = async (question) => {
+    if (!question.trim()) return
+    setConversation(prev => [...prev, { role: 'user', text: question }])
+    setLoading(true)
+    setFollowUpError(null)
+    try {
+      const answer = await generateFollowUpAnswer(error.category, error.explanation, scenario.title, question, conversation)
+      setConversation(prev => [...prev, { role: 'assistant', text: answer }])
+    } catch {
+      setFollowUpError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const isOverruled = localOverride !== null
 
   return (
-    <div className={`card p-5 border-l-4 ${effectiveIdentified ? 'border-l-green-500' : 'border-l-red-500'}`}>
+    <div className={`glass-panel p-5 border-l-4 ${effectiveIdentified ? 'border-l-green-500' : 'border-l-red-500'}`}>
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className="tag-green text-xs">Error {idx + 1}</span>
-        <span className="text-sm font-medium text-navy-500">
+        <span className="text-sm font-medium" style={{ color: 'var(--glass-accent)' }}>
           {ERROR_CATEGORY_MAP[error.category]?.label || error.category}
         </span>
         {effectiveIdentified && <span className="tag-green">Identified</span>}
@@ -282,15 +274,15 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
         {isOverruled && <span className="tag-amber">Overruled</span>}
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3 text-sm text-gray-600 document-text leading-relaxed whitespace-pre-wrap">
-        <span className="tag-gray text-[10px] mb-1 inline-block">Paragraph {error.paragraphNumber || '?'}</span>
-        {paragraphText ? `"${paragraphText.slice(0, 300)}${paragraphText.length > 300 ? '...' : ''}"` : '(paragraph not found)'}
+      <div className="document-viewer rounded p-3 mb-3 text-sm document-text leading-relaxed whitespace-pre-wrap" style={{ background: '#fff' }}>
+        <span className="tag-gray text-[10px] mb-1 inline-block" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>Paragraph {error.paragraphNumber || '?'}</span>
+        <span style={{ color: '#374151' }}>{paragraphText ? `"${paragraphText.slice(0, 300)}${paragraphText.length > 300 ? '...' : ''}"` : '(paragraph not found)'}</span>
       </div>
 
-      <div className="text-sm text-gray-700 leading-relaxed mb-3">{error.explanation}</div>
+      <div className="text-sm leading-relaxed mb-3" style={{ color: 'var(--glass-primary)' }}>{error.explanation}</div>
 
       {error.correctLaw && (
-        <div className="text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2 mb-2">
+        <div className="text-xs rounded p-2 mb-2" style={{ color: 'var(--glass-accent)', background: 'rgba(96, 165, 250, 0.1)', border: '1px solid rgba(96, 165, 250, 0.2)' }}>
           <strong>Correct law:</strong> {error.correctLaw}
         </div>
       )}
@@ -299,29 +291,33 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
         <ReportButton scenarioId={scenario.id} errorId={error.errorId} />
         <button
           onClick={toggleOverride}
-          className="text-[10px] border rounded px-1.5 py-0.5 hover:bg-gray-50 transition-colors"
+          className="text-[10px] rounded px-1.5 py-0.5 transition-colors"
           style={{
-            color: effectiveIdentified ? '#dc2626' : '#16a34a',
-            borderColor: effectiveIdentified ? '#fecaca' : '#bbf7d0',
+            color: effectiveIdentified ? 'var(--glass-error)' : 'var(--glass-success)',
+            border: `1px solid ${effectiveIdentified ? 'rgba(248,113,113,0.3)' : 'rgba(110,231,183,0.3)'}`,
+            background: 'transparent',
           }}
         >
           {isOverruled ? (effectiveIdentified ? 'Overruled Identified' : 'Overruled Missed') : (effectiveIdentified ? 'Overrule: Mark Missed' : 'Overrule: Mark Identified')}
         </button>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        {fu?.messages && fu.messages.length > 0 && (
+      <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        {conversation.length > 0 && (
           <div className="space-y-2 mb-2 max-h-48 overflow-y-auto">
-            {fu.messages.map((msg, i) => (
-              <div key={i} className={`text-xs p-2 rounded ${msg.role === 'user' ? 'bg-gray-50 text-gray-700' : 'bg-blue-50 text-gray-700'}`}>
+            {conversation.map((msg, i) => (
+              <div key={i} className={`text-xs p-2 rounded`} style={{
+                background: msg.role === 'user' ? 'rgba(255,255,255,0.04)' : 'rgba(96,165,250,0.1)',
+                color: 'var(--glass-primary)',
+              }}>
                 {msg.role === 'assistant' && (
                   <span className="tag-gray text-[10px] mb-1 inline-block">AI-generated — verify independently</span>
                 )}
                 <div className="mt-0.5">{msg.text}</div>
               </div>
             ))}
-            {fu?.loading && (
-              <div className="flex items-center gap-2 text-xs text-gray-400 p-2" role="status" aria-label="Generating answer">
+            {loading && (
+              <div className="flex items-center gap-2 text-xs p-2" role="status" aria-label="Generating answer" style={{ color: 'var(--glass-muted)' }}>
                 <span>Generating answer</span>
                 <div className="dot-pulse">
                   <span /><span /><span />
@@ -330,21 +326,27 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
             )}
           </div>
         )}
-        {fu?.error && !fu?.loading && <p className="text-xs text-red-500 mb-2 animate-fade-in">Analysis could not be generated at this time. The AI service may be unavailable.</p>}
-        <FollowUpForm errorId={error.errorId} onSubmit={onFollowUp} loading={fu?.loading} />
+        {followUpError && !loading && <p className="text-xs mb-2 animate-fade-in" style={{ color: 'var(--glass-error)' }}>Analysis could not be generated at this time. The AI service may be unavailable.</p>}
+        <FollowUpForm onSubmit={handleAsk} loading={loading} />
       </div>
     </div>
   )
 }
 
-function FollowUpForm({ errorId, onSubmit, loading }) {
+function FollowUpForm({ onSubmit, loading }) {
   const [question, setQuestion] = useState('')
-  const handleSubmit = () => { if (!question.trim()) return; onSubmit(errorId, question); setQuestion('') }
+  const handleSubmit = () => {
+    if (!question.trim() || loading) return
+    onSubmit(question)
+    setQuestion('')
+  }
   return (
     <div className="flex gap-2">
       <input type="text" value={question} onChange={e => setQuestion(e.target.value)}
-        placeholder="Ask a follow-up question..." className="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-navy-300" disabled={loading} />
-      <button onClick={handleSubmit} disabled={!question.trim() || loading} className="btn-primary text-xs !px-2 !py-1">Ask</button>
+        placeholder="Ask a follow-up question..."
+        className="glass-input flex-1"
+        disabled={loading} />
+      <button onClick={handleSubmit} disabled={!question.trim() || loading} className="btn-primary btn-small">Ask</button>
     </div>
   )
 }

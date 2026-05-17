@@ -97,7 +97,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 no-print">
+      <div className="glass-panel flex items-center justify-between px-4 py-2.5 no-print rounded-none border-x-0 border-t-0" style={{ borderRadius: 0 }}>
         <div className="text-sm text-gray-500">
           <span className="font-medium text-gray-700">{scenario.documentType}</span>
           <span className="mx-2">&middot;</span><span>{scenario.practiceArea}</span>
@@ -114,7 +114,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          <div className="bg-white shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto rounded-sm">
+          <div className="document-viewer p-8 max-w-3xl mx-auto">
             <h2 className="text-base font-bold text-center mb-4 text-navy-600">{scenario.title}</h2>
             <div className="document-text text-gray-900 leading-relaxed">
               {paragraphs.map((para, idx) => {
@@ -147,7 +147,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                         </div>
 
                         {isActive && (
-                          <div className="ml-1 mt-1 mb-2 p-3 bg-white border border-gray-200 rounded shadow-sm">
+                          <div className="ml-1 mt-1 mb-2 p-3 glass-panel-elevated">
                             <p className="text-xs text-gray-400 mb-2">
                               Flagging paragraph <strong className="text-gray-600">{activePanel.index + 1}</strong>
                               {activePanel.isEdit && ' (edit mode)'}
@@ -163,7 +163,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                                       name={`flag-cat-${idx}`}
                                       checked={activePanel.category === cat.id}
                                       onChange={() => setActivePanel(p => ({ ...p, category: cat.id }))}
-                                      className="mt-0.5"
+                                      className="glass-radio mt-0.5"
                                     />
                                     <span className="text-gray-700 leading-tight">{cat.label}</span>
                                   </label>
@@ -183,7 +183,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                                   }
                                 }}
                                 placeholder="e.g. The cited statute section does not govern this type of dispute."
-                                className="w-full text-xs border border-gray-200 rounded p-2 resize-none h-16"
+                                className="w-full text-xs glass-textarea p-2 resize-none h-16"
                               />
                               <div className="flex justify-between mt-1">
                                 {activePanel.explanation.trim().length < 30 ? (
@@ -201,16 +201,16 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                               <button
                                 onClick={handleFlag}
                                 disabled={!activePanel.category || activePanel.explanation.trim().length < 30}
-                                className="btn-primary text-xs !px-3 !py-1.5"
+                                className="btn-primary btn-small"
                               >
                                 {activePanel.isEdit ? 'Update Flag' : 'Flag This Paragraph'}
                               </button>
                               {activePanel.isEdit && (
-                                <button onClick={() => { setRemovingId(activePanel.annotationId); setActivePanel(null) }} className="text-xs text-red-500 underline hover:text-red-700">
+                                <button onClick={() => { setRemovingId(activePanel.annotationId); setActivePanel(null) }} className="btn-secondary btn-small">
                                   Remove flag
                                 </button>
                               )}
-                              <button onClick={handleCancel} className="text-xs text-gray-400 underline hover:text-gray-600 ml-auto">
+                              <button onClick={handleCancel} className="btn-secondary btn-small ml-auto">
                                 Cancel
                               </button>
                             </div>
@@ -225,7 +225,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
           </div>
         </div>
 
-        <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
+        <div className="w-80 glass-panel overflow-y-auto rounded-none border-y-0 border-r-0" style={{ borderRadius: 0, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="p-4">
             {isTutorial && (
               <div className="mb-3">
@@ -244,7 +244,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                 {[...annotations]
                   .sort((a, b) => a.paragraphIndex - b.paragraphIndex)
                   .map((ann, i) => (
-                    <div key={ann.id} className="p-2.5 bg-gray-50 rounded border border-gray-200 text-xs">
+                    <div key={ann.id} className="p-2.5 glass-panel text-xs">
                       <div className="flex items-start justify-between">
                         <span className="font-medium text-gray-700">
                           <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] font-bold text-white mr-1">
@@ -268,6 +268,7 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                             })
                           }}
                           className="text-gray-400 hover:text-navy-500 underline"
+                          style={{ color: 'var(--glass-secondary)' }}
                         >
                           Edit
                         </button>
@@ -276,10 +277,10 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
                             Remove?{' '}
                             <button onClick={handleRemoveConfirm} className="text-red-500 underline hover:text-red-700">Remove</button>
                             {' / '}
-                            <button onClick={handleRemoveCancel} className="text-gray-400 underline hover:text-gray-600">Keep</button>
+                            <button onClick={handleRemoveCancel} className="text-gray-400 underline hover:text-gray-600" style={{ color: 'var(--glass-secondary)' }}>Keep</button>
                           </span>
                         ) : (
-                          <button onClick={() => handleRemoveStart(ann.id)} className="text-gray-400 hover:text-red-500 underline">
+                          <button onClick={() => handleRemoveStart(ann.id)} className="text-gray-400 hover:text-red-500 underline" style={{ color: 'var(--glass-secondary)' }}>
                             Remove
                           </button>
                         )}
@@ -296,8 +297,8 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
       </div>
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-5 w-80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="glass-panel-elevated p-5 w-80">
             <p className="text-sm text-gray-700">
               You have flagged <strong>{annotations.length}</strong> paragraph{annotations.length !== 1 ? 's' : ''}.
               Once submitted, annotations cannot be changed.
@@ -311,8 +312,8 @@ export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
       )}
 
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-5 w-80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="glass-panel-elevated p-5 w-80">
             <p className="text-sm text-gray-700">
               Clear all {annotations.length} flag{annotations.length !== 1 ? 's' : ''}? Cannot be undone.
             </p>

@@ -30,13 +30,13 @@ export default function AboutPanel({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center pt-12">
-      <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-xl max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-navy-500">About Hallucination Autopsy</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+      <div className="glass-panel w-full max-w-xl max-h-[80vh] overflow-y-auto">
+        <div className="sticky top-0 px-5 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--glass-accent)' }}>About Hallucination Autopsy</h2>
+          <button onClick={onClose} style={{ color: 'var(--glass-muted)' }}>&times;</button>
         </div>
 
-        <div className="flex border-b border-gray-200">
+        <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {[
             { id: 'about', label: 'About' },
             { id: 'research', label: 'Research Foundation' },
@@ -47,11 +47,11 @@ export default function AboutPanel({ onClose }) {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 text-xs font-medium py-2.5 border-b-2 transition-colors ${
-                tab === t.id
-                  ? 'border-navy-500 text-navy-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              className="flex-1 text-xs font-medium py-2.5 border-b-2 transition-colors"
+              style={{
+                borderBottomColor: tab === t.id ? 'var(--glass-accent)' : 'transparent',
+                color: tab === t.id ? 'var(--glass-accent)' : 'var(--glass-secondary)',
+              }}
             >
               {t.label}
             </button>
@@ -103,7 +103,7 @@ export default function AboutPanel({ onClose }) {
                 The taxonomy is drawn from and consistent with the classification frameworks
                 established in the following studies:
               </p>
-              <ol className="space-y-2 list-decimal pl-4 text-xs text-gray-500">
+              <ol className="space-y-2 list-decimal pl-4 text-xs" style={{ color: 'var(--glass-secondary)' }}>
                 {RESEARCH_CITATIONS.map(c => (
                   <li key={c.key} className="leading-relaxed">{c.text}</li>
                 ))}
@@ -121,7 +121,7 @@ export default function AboutPanel({ onClose }) {
 
           {tab === 'roadmap' && (
             <div className="space-y-5">
-              <h3 className="text-sm font-semibold text-navy-500">Where This Is Going</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--glass-accent)' }}>Where This Is Going</h3>
 
               <div>
                 <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Current</span>
