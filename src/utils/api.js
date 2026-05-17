@@ -145,29 +145,38 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const userFound = semanticAnnotations.filter(a => a.result === 'Identified' || a.result === 'Identified (wrong category)' || a.result === 'Identified (overruled)').length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
-  const notesFromMatched = (userAnnotations || [])
-    .filter(a => a.matchedErrorId && a.explanation)
-    .map(a => {
-      const err = plantedErrors.find(e => e.errorId === a.matchedErrorId)
-      if (!err) return null
+  const seen = new Set()
+  const userNoteEntries = []
+
+  for (const a of (userAnnotations || [])) {
+    if (!a.explanation) continue
+    const key = `${a.paragraphNumber}|${a.explanation}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const err = a.matchedErrorId ? plantedErrors.find(e => e.errorId === a.matchedErrorId) : null
+    if (err) {
       const override = overrides[err.errorId]
       const status = override === 'mark-missed' ? 'overruled missed' : (err.category === a.category ? 'correctly identified' : 'flagged with wrong category')
-      return `- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`
-    })
-    .filter(Boolean)
-    .join('\n')
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`)
+    } else {
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (not a planted error): user wrote: "${a.explanation}"`)
+    }
+  }
 
-  const notesFromRaw = (rawAnnotations || [])
-    .filter(a => a.explanation)
-    .map(a => {
-      const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
-      if (!err) return null
-      return `- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}): user wrote: "${a.explanation}"`
-    })
-    .filter(Boolean)
-    .join('\n')
+  for (const a of (rawAnnotations || [])) {
+    if (!a.explanation) continue
+    const key = `${a.paragraphNumber}|${a.explanation}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
+    if (err) {
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}): user wrote: "${a.explanation}"`)
+    } else {
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (not a planted error): user wrote: "${a.explanation}"`)
+    }
+  }
 
-  const userDescriptions = notesFromMatched || notesFromRaw
+  const userDescriptions = userNoteEntries.join('\n')
 
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
