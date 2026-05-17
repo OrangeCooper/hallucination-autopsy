@@ -77,21 +77,16 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
     <div className="max-w-4xl mx-auto px-4 py-6">
       {isTutorial && (
         <div className="mb-6">
-          <TutorialCallout instruction="Test Mode generates scenarios weighted toward your weak categories. It adapts to your skill profile and tracks results across sessions. In the guided tour, this screen shows what Test Mode looks like — click View Skill Profile to continue." />
-          <button onClick={onViewSkillProfile} className="btn-primary mt-3">View Skill Profile</button>
+          <TutorialCallout instruction="Test Mode generates scenarios weighted toward your weak categories. It adapts to your skill profile and tracks results across sessions. The form below lets you configure area of law, jurisdiction, and difficulty before generating an adaptive test." />
         </div>
       )}
 
-      {!isTutorial && (
-        <>
-          <h1 className="text-lg font-semibold text-navy-500 mb-1">TEST Mode</h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Simulation-based evaluation. Error types are selected adaptively based on your weak categories.
-          </p>
-        </>
-      )}
+      <h1 className="text-lg font-semibold mb-1" style={{ color: 'var(--glass-primary)' }}>TEST Mode</h1>
+      <p className="text-sm mb-6" style={{ color: 'var(--glass-secondary)' }}>
+        Simulation-based evaluation. Error types are selected adaptively based on your weak categories.
+      </p>
 
-      {!isTutorial && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div className="glass-panel p-5">
             <h2 className="text-sm font-medium text-gray-700 mb-3">Generate Test</h2>
@@ -132,8 +127,8 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
               </div>
             )}
 
-            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm w-full mb-3">
-              Generate Adaptive Test
+            <button onClick={handleGenerate} disabled={generating || isTutorial} className="btn-primary text-sm w-full mb-3">
+              {isTutorial ? 'Generation disabled in tour mode' : 'Generate Adaptive Test'}
             </button>
 
             {generatedScenario && (
@@ -175,13 +170,19 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
             )}
           </div>
         </div>
-      </div>}
+      </div>
 
-      {!isTutorial && generating && (
+      {isTutorial && (
+        <div className="text-center mt-6">
+          <button onClick={onViewSkillProfile} className="btn-primary">View Skill Profile</button>
+        </div>
+      )}
+
+      {generating && (
         <ScenarioLoadingScreen onRetry={handleGenerate} />
       )}
 
-      {!isTutorial && error && !generating && (
+      {error && !generating && (
         <ScenarioErrorScreen message={error} onRetry={handleGenerate} onBack={() => setError(null)} />
       )}
     </div>

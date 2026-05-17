@@ -6,14 +6,14 @@ export default function TutorialBanner({ currentScreen, onExit }) {
   const stepIndex = currentStep ? currentStep.step - 1 : 0
 
   return (
-    <div className="bg-navy-500 text-white text-xs">
+    <div className="tutorial-banner">
       <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-medium">Guided Tour</span>
-          <span className="text-navy-200">|</span>
-          <span>
+          <span className="font-medium step-title">Guided Tour</span>
+          <span className="step-counter">|</span>
+          <span className="step-counter">
             Step {currentStep?.step || 1} of {steps.length}
-            <span className="text-navy-200 ml-2">&mdash; {currentStep?.title || ''}</span>
+            <span className="ml-2" style={{ color: 'var(--glass-primary)', fontWeight: 500 }}>&mdash; {currentStep?.title || ''}</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -21,13 +21,11 @@ export default function TutorialBanner({ currentScreen, onExit }) {
             {steps.map((s, i) => (
               <div
                 key={s.step}
-                className={`w-1.5 h-1.5 rounded-full ${
-                  i <= stepIndex ? 'bg-white' : 'bg-navy-300'
-                }`}
+                className={`step-dot ${i <= stepIndex ? 'active' : ''}`}
               />
             ))}
           </div>
-          <button onClick={onExit} className="text-navy-200 hover:text-white underline transition-colors">
+          <button onClick={onExit} className="exit-link text-xs underline hover:no-underline transition-colors">
             Exit Tour
           </button>
         </div>

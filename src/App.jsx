@@ -223,7 +223,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="text-center text-[10px] py-3 px-4 leading-relaxed" style={{ color: 'var(--glass-muted)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <footer className="text-center text-[10px] py-3 px-4 leading-relaxed" style={{ color: 'var(--glass-muted)', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
         Hallucination Autopsy contains no real client data. All legal scenarios are entirely fictional and synthetic.
         Nothing on this platform constitutes legal advice. All AI-generated explanations should be independently
         verified against primary legal sources.
