@@ -3,8 +3,9 @@ import { ERROR_CATEGORIES, ERROR_CATEGORY_MAP } from '../data/errorCategories'
 import SkillRadarChart from './RadarChart'
 import { generateSkillDevelopmentAdvice } from '../utils/api'
 import { resetAllData } from '../utils/storage'
+import TutorialCallout from './TutorialCallout'
 
-export default function SkillProfile({ profile, sessions, onBack }) {
+export default function SkillProfile({ profile, sessions, onBack, isTutorial, onCompleteTour }) {
   const [advice, setAdvice] = useState(null)
   const [adviceLoading, setAdviceLoading] = useState(true)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -43,12 +44,24 @@ export default function SkillProfile({ profile, sessions, onBack }) {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-navy-500">Skill Profile</h1>
-        <button onClick={onBack} className="btn-secondary text-xs !px-3 !py-1.5">
-          Back to Dashboard
-        </button>
+        {isTutorial ? (
+          <button onClick={onCompleteTour} className="btn-primary text-xs !px-3 !py-1.5">
+            Complete Tour
+          </button>
+        ) : (
+          <button onClick={onBack} className="btn-secondary text-xs !px-3 !py-1.5">
+            Back to Dashboard
+          </button>
+        )}
       </div>
 
-      {profile.sessionsCompleted === 0 ? (
+      {isTutorial && (
+        <div className="mb-6">
+          <TutorialCallout instruction="In live mode, your detection rates across categories are tracked here after each session. This screen reflects your cumulative performance over time. Click Complete Tour to finish the walkthrough." />
+        </div>
+      )}
+
+      {profile.sessionsCompleted === 0 && !isTutorial ? (
         <div className="card p-8 text-center">
           <p className="text-sm text-gray-400">
             No sessions completed yet. Complete a review session to see your skill profile.
@@ -175,14 +188,16 @@ export default function SkillProfile({ profile, sessions, onBack }) {
           </div>
 
           {/* Reset button */}
-          <div className="text-center">
-            <button
-              onClick={() => setShowResetConfirm(true)}
-              className="btn-danger text-xs !px-3 !py-1.5"
-            >
-              Reset Profile
-            </button>
-          </div>
+          {!isTutorial && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="btn-danger text-xs !px-3 !py-1.5"
+              >
+                Reset Profile
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -4,7 +4,7 @@ import ReportButton from './ReportButton'
 import { scoreParagraphAnnotations, splitIntoParagraphs } from '../utils/annotations'
 import { generateReviewSummary, generateFollowUpAnswer } from '../utils/api'
 
-export default function AnalysisReport({ scenario, annotations, onBackToDashboard }) {
+export default function AnalysisReport({ scenario, annotations, onBackToDashboard, isTutorial, onViewSkillProfile }) {
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [followUps, setFollowUps] = useState({})
@@ -59,6 +59,11 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
   }, [autoMatch.matchedAnnotations, overrides])
 
   useEffect(() => {
+    if (isTutorial && scenario.tutorialStaticSummary) {
+      setSummary(scenario.tutorialStaticSummary)
+      setSummaryLoading(false)
+      return
+    }
     let cancelled = false
     setSummaryLoading(true)
     generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors)
@@ -66,17 +71,27 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
       .catch(() => { if (!cancelled) setSummary(null) })
       .finally(() => { if (!cancelled) setSummaryLoading(false) })
     return () => { cancelled = true }
-  }, [scenario, summaryAnnotations])
+  }, [scenario, summaryAnnotations, isTutorial])
 
   const handleFollowUp = async (errorId, question) => {
     const error = scenario.plantedErrors.find(e => e.errorId === errorId)
     if (!error || !question.trim()) return
-    setFollowUps(prev => ({ ...prev, [errorId]: { ...prev[errorId], loading: true } }))
+    const prevMessages = followUps[errorId]?.messages || []
+    setFollowUps(prev => ({
+      ...prev,
+      [errorId]: { messages: [...prevMessages, { role: 'user', text: question }], loading: true },
+    }))
     try {
-      const answer = await generateFollowUpAnswer(error.category, error.explanation, scenario.title, question)
-      setFollowUps(prev => ({ ...prev, [errorId]: { answer, question, loading: false } }))
+      const answer = await generateFollowUpAnswer(error.category, error.explanation, scenario.title, question, prevMessages)
+      setFollowUps(prev => ({
+        ...prev,
+        [errorId]: { messages: [...prev[errorId].messages, { role: 'assistant', text: answer }], loading: false },
+      }))
     } catch {
-      setFollowUps(prev => ({ ...prev, [errorId]: { answer: null, loading: false, error: true } }))
+      setFollowUps(prev => ({
+        ...prev,
+        [errorId]: { ...prev[errorId], loading: false, error: true },
+      }))
     }
   }
 
@@ -216,8 +231,12 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
         )}
       </div>
 
-      <div className="flex justify-center">
-        <button onClick={() => onBackToDashboard(annotations, overrides, new Set(identifiedErrors))} className="btn-secondary">Save &amp; Return</button>
+      <div className="flex justify-center gap-3">
+        {isTutorial ? (
+          <button onClick={onViewSkillProfile} className="btn-primary">View Skill Profile</button>
+        ) : (
+          <button onClick={() => onBackToDashboard(annotations, overrides, new Set(identifiedErrors))} className="btn-secondary">Save &amp; Return</button>
+        )}
       </div>
     </div>
   )
@@ -291,36 +310,41 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
       </div>
 
       <div className="mt-3 pt-3 border-t border-gray-200">
-        <FollowUpForm errorId={error.errorId} onSubmit={onFollowUp} followUp={fu} />
-        {fu?.loading && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-gray-400" role="status" aria-label="Generating answer">
-            <span>Generating answer</span>
-            <div className="dot-pulse">
-              <span /><span /><span />
-            </div>
+        {fu?.messages && fu.messages.length > 0 && (
+          <div className="space-y-2 mb-2 max-h-48 overflow-y-auto">
+            {fu.messages.map((msg, i) => (
+              <div key={i} className={`text-xs p-2 rounded ${msg.role === 'user' ? 'bg-gray-50 text-gray-700' : 'bg-blue-50 text-gray-700'}`}>
+                {msg.role === 'assistant' && (
+                  <span className="tag-gray text-[10px] mb-1 inline-block">AI-generated — verify independently</span>
+                )}
+                <div className="mt-0.5">{msg.text}</div>
+              </div>
+            ))}
+            {fu?.loading && (
+              <div className="flex items-center gap-2 text-xs text-gray-400 p-2" role="status" aria-label="Generating answer">
+                <span>Generating answer</span>
+                <div className="dot-pulse">
+                  <span /><span /><span />
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {fu?.answer && (
-          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-700 animate-fade-in">
-            <span className="tag-gray text-[10px] mb-1 inline-block">AI-generated — verify independently</span>
-            <div className="mt-1">{fu.answer}</div>
-          </div>
-        )}
-        {fu?.error && <p className="text-xs text-red-500 mt-1 animate-fade-in">Analysis could not be generated at this time. The AI service may be unavailable.</p>}
+        {fu?.error && !fu?.loading && <p className="text-xs text-red-500 mb-2 animate-fade-in">Analysis could not be generated at this time. The AI service may be unavailable.</p>}
+        <FollowUpForm errorId={error.errorId} onSubmit={onFollowUp} loading={fu?.loading} />
       </div>
     </div>
   )
 }
 
-function FollowUpForm({ errorId, onSubmit, followUp }) {
+function FollowUpForm({ errorId, onSubmit, loading }) {
   const [question, setQuestion] = useState('')
   const handleSubmit = () => { if (!question.trim()) return; onSubmit(errorId, question); setQuestion('') }
-  if (followUp?.answer) return null
   return (
     <div className="flex gap-2">
       <input type="text" value={question} onChange={e => setQuestion(e.target.value)}
-        placeholder="Ask a follow-up question..." className="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-navy-300" disabled={followUp?.loading} />
-      <button onClick={handleSubmit} disabled={!question.trim() || followUp?.loading} className="btn-primary text-xs !px-2 !py-1">Ask</button>
+        placeholder="Ask a follow-up question..." className="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-navy-300" disabled={loading} />
+      <button onClick={handleSubmit} disabled={!question.trim() || loading} className="btn-primary text-xs !px-2 !py-1">Ask</button>
     </div>
   )
 }

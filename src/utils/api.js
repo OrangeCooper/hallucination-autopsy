@@ -114,10 +114,14 @@ Write a brief written review summary (3-5 sentences) in the register of partner-
   return sanitizeSummary(raw)
 }
 
-export async function generateFollowUpAnswer(errorCategory, explanation, scenarioTitle, userQuestion) {
+export async function generateFollowUpAnswer(errorCategory, explanation, scenarioTitle, userQuestion, conversationHistory = []) {
   const systemPrompt = `You are a legal AI educator explaining a specific type of AI error in legal documents. Be precise and concise. Acknowledge uncertainty where it exists. Do not present your answer as definitive legal advice.`
 
-  const prompt = `The user is reviewing "${scenarioTitle}". An error of type "${errorCategory}" was planted. Explanation: "${explanation}"
+  const historyContext = conversationHistory.length > 0
+    ? `Previous conversation:\n${conversationHistory.map(m => `${m.role}: ${m.text}`).join('\n')}\n\n`
+    : ''
+
+  const prompt = `${historyContext}The user is reviewing "${scenarioTitle}". An error of type "${errorCategory}" was planted. Explanation: "${explanation}"
 
 The user asks: "${userQuestion}"
 

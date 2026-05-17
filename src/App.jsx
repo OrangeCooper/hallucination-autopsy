@@ -8,10 +8,12 @@ import SkillProfile from './components/SkillProfile'
 import AccountPage from './components/AccountPage'
 import TestMode from './components/TestMode'
 import LoginScreen from './components/LoginScreen'
+import TutorialBanner from './components/TutorialBanner'
 import { useSkillProfile } from './hooks/useSkillProfile'
 import { scoreParagraphAnnotations } from './utils/annotations'
 import { onAuthChange, logoutUser } from './utils/firebase'
 import { getSessions, getSkillProfile } from './utils/storage'
+import { TUTORIAL_SCENARIO } from './data/tutorialScenario'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('learn')
@@ -116,6 +118,19 @@ export default function App() {
     setActiveTab('learn')
   }, [])
 
+  const handleViewSkillProfileInTutorial = useCallback(() => {
+    setScreen('skill-profile')
+    setActiveTab('learn')
+  }, [])
+
+  const handleTutorialExit = useCallback(() => {
+    setLastAnnotations(null)
+    setSelectedScenario(null)
+    setCurrentMode(null)
+    setScreen('learn')
+    setActiveTab('learn')
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <NavBar
@@ -127,12 +142,17 @@ export default function App() {
         onNavigate={handleNavigate}
       />
       <main className="flex-1">
+        {currentMode === 'tutorial' && (
+          <TutorialBanner currentScreen={screen} onExit={handleTutorialExit} />
+        )}
+
         {screen === 'learn' && (
           <LearnMode
             profile={effectiveProfile}
             sessions={effectiveSessions}
             onStartScenario={handleStartScenario}
             onViewSkillProfile={handleViewSkillProfile}
+            isTutorial={currentMode === 'tutorial'}
           />
         )}
 
@@ -144,11 +164,19 @@ export default function App() {
         )}
 
         {screen === 'case-briefing' && selectedScenario && (
-          <CaseBriefing scenario={selectedScenario} onBegin={handleBeginReview} />
+          <CaseBriefing
+            scenario={selectedScenario}
+            onBegin={handleBeginReview}
+            isTutorial={currentMode === 'tutorial'}
+          />
         )}
 
         {screen === 'document-review' && selectedScenario && (
-          <DocumentReview scenario={selectedScenario} onSubmit={handleSubmitReview} />
+          <DocumentReview
+            scenario={selectedScenario}
+            onSubmit={handleSubmitReview}
+            isTutorial={currentMode === 'tutorial'}
+          />
         )}
 
         {screen === 'analysis-report' && selectedScenario && lastAnnotations && (
@@ -156,6 +184,8 @@ export default function App() {
             scenario={selectedScenario}
             annotations={lastAnnotations}
             onBackToDashboard={handleSaveAndExit}
+            isTutorial={currentMode === 'tutorial'}
+            onViewSkillProfile={handleViewSkillProfileInTutorial}
           />
         )}
 
@@ -164,6 +194,8 @@ export default function App() {
             profile={effectiveProfile}
             sessions={effectiveSessions}
             onBack={() => { setScreen('learn'); setActiveTab('learn') }}
+            isTutorial={currentMode === 'tutorial'}
+            onCompleteTour={handleTutorialExit}
           />
         )}
 

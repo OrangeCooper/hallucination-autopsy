@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ERROR_CATEGORIES } from '../data/errorCategories'
+import TutorialCallout from './TutorialCallout'
 
-export default function CaseBriefing({ scenario, onBegin }) {
+export default function CaseBriefing({ scenario, onBegin, isTutorial }) {
   const [showTaxonomy, setShowTaxonomy] = useState(false)
 
   return (
@@ -69,6 +70,10 @@ export default function CaseBriefing({ scenario, onBegin }) {
             </div>
           )}
         </div>
+
+        {isTutorial && (
+          <TutorialCallout instruction="Read the context carefully. This memo was supposedly prepared by an AI legal assistant — your task is to verify its accuracy before it reaches the supervising partner." />
+        )}
 
         <button onClick={onBegin} className="btn-primary w-full">
           Begin Document Review

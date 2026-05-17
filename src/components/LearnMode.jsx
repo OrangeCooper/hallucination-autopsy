@@ -3,7 +3,9 @@ import { ERROR_CATEGORIES } from '../data/errorCategories'
 import { generateScenario } from '../utils/api'
 import SkillRadarChart from './RadarChart'
 import ScenarioLoadingScreen, { ScenarioErrorScreen } from './ScenarioLoadingScreen'
+import TutorialCallout from './TutorialCallout'
 import { isIntroDismissed, dismissIntro } from '../utils/storage'
+import { TUTORIAL_SCENARIO } from '../data/tutorialScenario'
 
 const PRACTICE_AREAS = [
   'Constitutional', 'Corporate', 'Securities', 'Employment',
@@ -25,7 +27,7 @@ const JURISDICTIONS = [
   'Multi-jurisdictional', 'Random',
 ]
 
-export default function LearnMode({ profile, sessions, onStartScenario, onViewSkillProfile }) {
+export default function LearnMode({ profile, sessions, onStartScenario, onViewSkillProfile, isTutorial }) {
   const [showIntro, setShowIntro] = useState(!isIntroDismissed())
   const [selectedCategories, setSelectedCategories] = useState([])
   const [practiceArea, setPracticeArea] = useState('Random')
@@ -95,6 +97,33 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
             Configure a scenario below, generate it via AI, then review and annotate the document.
           </p>
           <button onClick={handleDismissIntro} className="mt-3 btn-primary text-xs !px-3 !py-1.5">Got it</button>
+        </div>
+      )}
+
+      {isTutorial && (
+        <div className="mb-6 card p-5 border-l-4 border-l-navy-500">
+          <h3 className="text-sm font-medium text-navy-700 mb-1">Welcome to the Guided Tour</h3>
+          <p className="text-xs text-gray-600 mb-3">
+            This walkthrough guides you through the full Hallucination Autopsy workflow.
+            You will review a pre-built legal memo with 4 planted errors covering different categories.
+          </p>
+          <button
+            onClick={() => onStartScenario(TUTORIAL_SCENARIO, 'tutorial')}
+            className="btn-primary text-xs !px-3 !py-1.5"
+          >
+            Begin Tour
+          </button>
+        </div>
+      )}
+
+      {!isTutorial && (
+        <div className="mb-4">
+          <button
+            onClick={() => onStartScenario(TUTORIAL_SCENARIO, 'tutorial')}
+            className="text-xs border border-navy-300 text-navy-600 rounded px-3 py-1.5 hover:bg-navy-50 transition-colors"
+          >
+            Take a Guided Tour
+          </button>
         </div>
       )}
 

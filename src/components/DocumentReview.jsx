@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { ERROR_CATEGORIES, ERROR_CATEGORY_MAP } from '../data/errorCategories'
 import { useAnnotations } from '../hooks/useAnnotations'
 import { splitIntoParagraphs } from '../utils/annotations'
+import TutorialCallout from './TutorialCallout'
 
-export default function DocumentReview({ scenario, onSubmit }) {
+export default function DocumentReview({ scenario, onSubmit, isTutorial }) {
   const { annotations, addAnnotation, removeAnnotation, updateAnnotation, clearAll } = useAnnotations()
   const [elapsed, setElapsed] = useState(0)
   const [activePanel, setActivePanel] = useState(null)
@@ -226,6 +227,11 @@ export default function DocumentReview({ scenario, onSubmit }) {
 
         <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
           <div className="p-4">
+            {isTutorial && (
+              <div className="mb-3">
+                <TutorialCallout instruction="Look for fabricated citations, wrong legal standards, temporal inconsistencies, and false precision. Flag at least the paragraphs you are confident contain errors." />
+              </div>
+            )}
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
               Annotations ({annotations.length})
             </h3>
