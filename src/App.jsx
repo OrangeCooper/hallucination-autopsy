@@ -70,16 +70,7 @@ export default function App() {
   const handleSaveAndExit = useCallback((rawAnnotations, rawOverrides, analysisIdentifiedSet) => {
     if (selectedScenario && rawAnnotations) {
       const { matchedAnnotations } = scoreParagraphAnnotations(rawAnnotations, selectedScenario.plantedErrors)
-      const identified = new Set(
-        matchedAnnotations
-          .filter(a => a.matchedErrorId)
-          .map(a => a.matchedErrorId)
-      )
-      for (const [errorId, action] of Object.entries(rawOverrides || {})) {
-        if (action === 'mark-identified') identified.add(errorId)
-        if (action === 'mark-missed') identified.delete(errorId)
-      }
-      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, rawOverrides, identified)
+      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, rawOverrides, analysisIdentifiedSet)
       if (user) {
         setUserProfile(getSkillProfile())
         setUserSessions(getSessions())

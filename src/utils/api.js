@@ -135,6 +135,8 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations, override
 export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations, overrides = {}) {
   const systemPrompt = `You are a supervising partner reviewing an associate's supervision of AI-generated legal work.
 
+CRITICAL — The "error category" labels below (e.g. "hallucinated citation", "misrepresented holding", "omission error", "false precision", "temporal error", "jurisdictional drift") are CLASSIFICATION LABELS for planted training errors. They are NOT headings, titles, or content from the document being reviewed. Never refer to an error category as if it were a paragraph heading or document section title.
+
 Do NOT reference internal identifiers, annotation IDs, coordinates, offsets, labels, or technical metadata.
 
 Refer only to:
@@ -147,6 +149,11 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
 
   const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides)
   const userFound = semanticAnnotations.filter(a => a.result.startsWith('Identified')).length
+  const correctCat = semanticAnnotations.filter(a => a.result === 'Identified').length
+  const wrongCat = semanticAnnotations.filter(a => a.result === 'Identified (wrong category)').length
+  const trueMissed = semanticAnnotations.filter(a => a.result === 'Missed').length
+  const overrideIdentified = semanticAnnotations.filter(a => a.result.includes('manually marked as identified')).length
+  const overrideMissed = semanticAnnotations.filter(a => a.result.includes('manually marked as missed')).length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
   const seen = new Set()
@@ -197,9 +204,9 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
 Planted errors (${plantedErrors.length} total):
-${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber} | error category: ${a.errorCategory} → assessment: ${a.result}`).join('\n')}
+${semanticAnnotations.map(a => `- Para ${a.paragraphNumber} | error classification: [${a.errorCategory}] → user result: ${a.result}`).join('\n')}
 
-The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.${overrideEntries.length > 0 ? `\n\nThe associate applied manual overrides:\n${overrideEntries.join('\n')}` : ''}
+Breakdown: ${correctCat} correctly identified (correct error category), ${wrongCat} identified but wrong category, ${trueMissed} missed entirely${overrideIdentified > 0 || overrideMissed > 0 ? ` (${overrideIdentified} overridden to identified, ${overrideMissed} overridden to missed)` : ''}. The associate also flagged ${falsePositives} passage(s) that were not planted errors.${overrideEntries.length > 0 ? `\n\nManual overrides applied:\n${overrideEntries.join('\n')}` : ''}
 
 THE ASSOCIATE'S OWN NOTES FOR EACH FLAGGED PASSAGE:
 ${userDescriptions || '(The associate did not leave any notes.)'}
