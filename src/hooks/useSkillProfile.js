@@ -24,18 +24,16 @@ export function useSkillProfile() {
     const newProfile = { ...profile }
     newProfile.sessionsCompleted += 1
 
-    const identified = new Set(
-      matchedAnnotations
-        .filter(a => a.matchedErrorId)
-        .map(a => a.matchedErrorId)
-    )
-
-    if (overrides) {
-      for (const [errorId, action] of Object.entries(overrides)) {
-        if (action === 'mark-identified') identified.add(errorId)
-        if (action === 'mark-missed') identified.delete(errorId)
+    const identified = effectiveIdentified || (() => {
+      const s = new Set(matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId))
+      if (overrides) {
+        for (const [errorId, action] of Object.entries(overrides)) {
+          if (action === 'mark-identified') s.add(errorId)
+          if (action === 'mark-missed') s.delete(errorId)
+        }
       }
-    }
+      return s
+    })()
 
     plantedErrors.forEach(e => {
       const cat = newProfile.categories[e.category]

@@ -164,9 +164,9 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
       else if (a.overrideResult === 'identified') status = 'reviewer manually marked identified'
       else if (err.category === a.category) status = 'correctly identified'
       else status = 'wrong category'
-      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}, ${status}): user wrote: "${a.explanation}"`)
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}, status: ${status}] associate wrote: "${a.explanation}"`)
     } else {
-      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (not a planted error): user wrote: "${a.explanation}"`)
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [not a planted error] associate wrote: "${a.explanation}"`)
     }
   }
 
@@ -177,9 +177,9 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     seen.add(key)
     const err = plantedErrors.find(e => e.paragraphNumber === a.paragraphNumber)
     if (err) {
-      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (${err.category.replace(/-/g, ' ')}): user wrote: "${a.explanation}"`)
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}] associate wrote: "${a.explanation}"`)
     } else {
-      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} (not a planted error): user wrote: "${a.explanation}"`)
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [not a planted error] associate wrote: "${a.explanation}"`)
     }
   }
 
@@ -190,14 +190,14 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     .map(([errorId, action]) => {
       const err = plantedErrors.find(e => e.errorId === errorId)
       if (!err) return ''
-      return `- Paragraph ${err.paragraphNumber} (${err.category.replace(/-/g, ' ')}): associate manually overruled as ${action === 'mark-identified' ? 'identified' : 'missed'}`
+      return `- Paragraph ${err.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}, manual override → ${action === 'mark-identified' ? 'identified' : 'missed'}]`
     })
     .filter(Boolean)
 
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
 Planted errors (${plantedErrors.length} total):
-${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber}: ${a.errorCategory} — ${a.result}`).join('\n')}
+${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber} | error category: ${a.errorCategory} → assessment: ${a.result}`).join('\n')}
 
 The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.${overrideEntries.length > 0 ? `\n\nThe associate applied manual overrides:\n${overrideEntries.join('\n')}` : ''}
 
@@ -206,9 +206,10 @@ ${userDescriptions || '(The associate did not leave any notes.)'}
 
 Write a brief written review summary (3-5 sentences) in the register of partner-level analytical feedback. YOU MUST:
 1. Quote or reference what the associate wrote in their notes and respond to their specific reasoning.
-2. If their explanation was correct, acknowledge it.
-3. If their explanation was incorrect or incomplete, explain why and provide guidance.
-4. Where the associate assigned the wrong error category, note this as a category recognition issue.
+2. When the assessment for an error is "Identified" (the associate flagged the correct paragraph AND assigned the correct error category), explicitly acknowledge that they correctly identified both the error and its type.
+3. When the assessment is "Identified (wrong category)", note that while they found the error, they assigned the wrong error category — treat this as partial recognition but flag the category gap.
+4. When the assessment indicates the associate overrode the result manually, factor this into your assessment of their judgment.
+5. Where the associate assigned the wrong error category, note this as a category recognition issue.
 Reference specific paragraph numbers and error categories. Do NOT reference internal identifiers.`
 
   const raw = await callOpenRouter([{ role: 'user', content: prompt }], systemPrompt)
