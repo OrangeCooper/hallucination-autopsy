@@ -9,6 +9,7 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [hoveredError, setHoveredError] = useState(null)
   const [overrides, setOverrides] = useState({})
+  const [dismissedFP, setDismissedFP] = useState(new Set())
   const overridesRef = useRef(overrides)
   overridesRef.current = overrides
 
@@ -44,22 +45,37 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
     })
   }, [])
 
+  const handleToggleFP = useCallback((annId) => {
+    setDismissedFP(prev => {
+      const next = new Set(prev)
+      if (next.has(annId)) next.delete(annId)
+      else next.add(annId)
+      return next
+    })
+  }, [])
+
+  const activeFPs = useMemo(() => {
+    return falsePositives.filter(a => !dismissedFP.has(a.id))
+  }, [falsePositives, dismissedFP])
+
   const overrideCount = Object.keys(overrides).length
   const overrideMissed = Object.values(overrides).filter(v => v === 'mark-missed').length
   const overrideIdentified = Object.values(overrides).filter(v => v === 'mark-identified').length
 
   const summaryAnnotations = useMemo(() => {
-    return autoMatch.matchedAnnotations.map(a => {
-      const override = a.matchedErrorId ? overrides[a.matchedErrorId] : null
-      if (!override) return a
-      return { ...a, overrideResult: override === 'mark-missed' ? 'missed' : 'identified' }
-    })
-  }, [autoMatch.matchedAnnotations, overrides])
+    return autoMatch.matchedAnnotations
+      .filter(a => a.matchedErrorId || !dismissedFP.has(a.id))
+      .map(a => {
+        const override = a.matchedErrorId ? overrides[a.matchedErrorId] : null
+        if (!override) return a
+        return { ...a, overrideResult: override === 'mark-missed' ? 'missed' : 'identified' }
+      })
+  }, [autoMatch.matchedAnnotations, overrides, dismissedFP])
 
   useEffect(() => {
     let cancelled = false
     setSummaryLoading(true)
-    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations)
+    generateReviewSummary(scenario, summaryAnnotations, scenario.plantedErrors, annotations, overrides)
       .then(text => { if (!cancelled) setSummary(text) })
       .catch(() => {
         if (!cancelled && scenario.tutorialStaticSummary) {
@@ -92,23 +108,37 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
           const isIdentified = ann?.matchedErrorId && identifiedErrors.has(ann.matchedErrorId)
           const wrongCategory = ann?.matchedErrorId && ann.wrongCategory
           const isFalsePositive = ann && !ann.matchedErrorId
+          const isDismissedFP = isFalsePositive && dismissedFP.has(ann.id)
           const isMissed = error && !identifiedErrors.has(error.errorId) && !ann
 
           let borderClass = ''
+          let clickHandler
           if (isIdentified && !wrongCategory) borderClass = 'border-l-green-500 bg-green-50/40'
           else if (wrongCategory) borderClass = 'border-l-amber-500 bg-amber-50/40'
-          else if (isFalsePositive) borderClass = 'border-l-yellow-500 bg-yellow-50/40'
-          else if (isMissed) borderClass = 'border-l-red-500 bg-red-50/40'
+          else if (isFalsePositive && !isDismissedFP) {
+            borderClass = 'border-l-yellow-500 bg-yellow-50/40'
+            clickHandler = () => handleToggleFP(ann.id)
+          } else if (isFalsePositive && isDismissedFP) {
+            borderClass = 'border-l-gray-300 bg-gray-100/40'
+            clickHandler = () => handleToggleFP(ann.id)
+          } else if (isMissed) borderClass = 'border-l-red-500 bg-red-50/40'
 
           return (
             <div
               key={idx}
-              className={`border-l-2 px-3 py-1.5 ${borderClass || 'border-l-transparent'}`}
+              className={`border-l-2 px-3 py-1.5 ${borderClass || 'border-l-transparent'} ${clickHandler ? 'cursor-pointer' : ''}`}
               onMouseEnter={error ? () => setHoveredError(error.errorId) : undefined}
               onMouseLeave={() => setHoveredError(null)}
+              onClick={clickHandler}
             >
               <span className="text-[10px] text-gray-300 font-mono mr-2 select-none">{paraNum}</span>
               <span className="leading-relaxed text-gray-900">{para}</span>
+              {isDismissedFP && (
+                <span className="ml-2 text-[10px]" style={{ color: 'var(--glass-secondary)' }}>(dismissed — click to reinstate)</span>
+              )}
+              {isFalsePositive && !isDismissedFP && (
+                <span className="ml-2 text-[10px]" style={{ color: 'var(--glass-warning)' }}>(click to dismiss)</span>
+              )}
             </div>
           )
         })}
@@ -132,8 +162,11 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
         <p className="text-sm" style={{ color: 'var(--glass-primary)' }}>
           Your review identified <strong>{identifiedErrors.size}</strong> of{' '}
           <strong>{scenario.plantedErrors.length}</strong> planted issues.
-          {falsePositives.length > 0 && (
-            <> {falsePositives.length} passage(s) were flagged that did not correspond to planted errors.</>
+          {activeFPs.length > 0 && (
+            <> {activeFPs.length} passage(s) were flagged that did not correspond to planted errors.</>
+          )}
+          {dismissedFP.size > 0 && (
+            <> <span style={{ color: 'var(--glass-secondary)' }}>({dismissedFP.size} dismissed)</span></>
           )}
         </p>
         {overrideCount > 0 && (
@@ -167,7 +200,7 @@ export default function AnalysisReport({ scenario, annotations, onBackToDashboar
           <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(110,231,183,0.4)' }} /> Correctly identified</span>
           <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(248,113,113,0.4)' }} /> Missed</span>
           <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(251,191,36,0.4)' }} /> Wrong category</span>
-          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(251,191,36,0.4)' }} /> Not a planted error</span>
+          <span><span className="inline-block w-3 h-3 rounded mr-1 align-middle" style={{ background: 'rgba(234,179,8,0.2)' }} /> Not a planted error</span>
         </div>
       </div>
 
@@ -261,8 +294,14 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
 
   const isOverruled = localOverride !== null
 
+  const panelBorder = isOverruled
+    ? (effectiveIdentified ? 'border-l-green-500' : 'border-l-red-500')
+    : (effectiveIdentified
+        ? (wrongCategory ? 'border-l-amber-500' : 'border-l-green-500')
+        : 'border-l-red-500')
+
   return (
-    <div className={`glass-panel p-5 border-l-4 ${effectiveIdentified ? 'border-l-green-500' : 'border-l-red-500'}`}>
+    <div className={`glass-panel p-5 border-l-4 ${panelBorder}`}>
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className="tag-green text-xs">Error {idx + 1}</span>
         <span className="text-sm font-medium" style={{ color: 'var(--glass-accent)' }}>
@@ -271,7 +310,7 @@ function ErrorPanel({ error, idx, scenario, isIdentified, autoMatch, overridesRe
         {effectiveIdentified && <span className="tag-green">Identified</span>}
         {!effectiveIdentified && !wrongCategory && <span className="tag-red">Missed</span>}
         {wrongCategory && !isOverruled && <span className="tag-amber">Wrong category</span>}
-        {isOverruled && <span className="tag-amber">Overruled</span>}
+        {isOverruled && <span className={'tag-amber'}>Overruled</span>}
       </div>
 
       <div className="document-viewer rounded p-3 mb-3 text-sm document-text leading-relaxed whitespace-pre-wrap" style={{ background: '#fff' }}>

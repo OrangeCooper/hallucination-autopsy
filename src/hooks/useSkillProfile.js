@@ -26,7 +26,7 @@ export function useSkillProfile() {
 
     const identified = new Set(
       matchedAnnotations
-        .filter(a => a.matchedErrorId && !a.wrongCategory)
+        .filter(a => a.matchedErrorId)
         .map(a => a.matchedErrorId)
     )
 

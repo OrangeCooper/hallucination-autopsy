@@ -99,7 +99,7 @@ function sanitizeSummary(text) {
   return clean
 }
 
-function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
+function buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides = {}) {
   const userMap = new Map()
   userAnnotations.forEach(a => {
     if (a.matchedErrorId) userMap.set(a.matchedErrorId, a)
@@ -107,9 +107,14 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
 
   return plantedErrors.map(e => {
     const ann = userMap.get(e.errorId)
+    const override = overrides[e.errorId]
 
     let result
-    if (ann?.overrideResult === 'missed') {
+    if (override === 'mark-missed') {
+      result = 'Missed (reviewer manually marked as missed)'
+    } else if (override === 'mark-identified') {
+      result = 'Identified (reviewer manually marked as identified)'
+    } else if (ann?.overrideResult === 'missed') {
       result = 'Missed (reviewer manually marked as missed)'
     } else if (ann?.overrideResult === 'identified') {
       result = 'Identified (reviewer manually marked as identified)'
@@ -127,7 +132,7 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations) {
   })
 }
 
-export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations) {
+export async function generateReviewSummary(scenario, userAnnotations, plantedErrors, rawAnnotations, overrides = {}) {
   const systemPrompt = `You are a supervising partner reviewing an associate's supervision of AI-generated legal work.
 
 Do NOT reference internal identifiers, annotation IDs, coordinates, offsets, labels, or technical metadata.
@@ -140,7 +145,7 @@ Refer only to:
 
 Write in professional analytical prose. No exclamation marks. No gamified language.`
 
-  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations)
+  const semanticAnnotations = buildSemanticAnnotationContext(plantedErrors, userAnnotations, overrides)
   const userFound = semanticAnnotations.filter(a => a.result.startsWith('Identified')).length
   const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
 
@@ -180,12 +185,21 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
 
   const userDescriptions = userNoteEntries.join('\n')
 
+  const overrideEntries = Object.entries(overrides)
+    .filter(([, action]) => action === 'mark-identified' || action === 'mark-missed')
+    .map(([errorId, action]) => {
+      const err = plantedErrors.find(e => e.errorId === errorId)
+      if (!err) return ''
+      return `- Paragraph ${err.paragraphNumber} (${err.category.replace(/-/g, ' ')}): associate manually overruled as ${action === 'mark-identified' ? 'identified' : 'missed'}`
+    })
+    .filter(Boolean)
+
   const prompt = `Scenario: ${scenario.title} (${scenario.practiceArea}, ${scenario.jurisdiction})
 
 Planted errors (${plantedErrors.length} total):
 ${semanticAnnotations.map(a => `- Paragraph ${a.paragraphNumber}: ${a.errorCategory} — ${a.result}`).join('\n')}
 
-The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.
+The associate identified ${userFound} of ${plantedErrors.length} planted issues and flagged ${falsePositives} passage(s) that were not errors.${overrideEntries.length > 0 ? `\n\nThe associate applied manual overrides:\n${overrideEntries.join('\n')}` : ''}
 
 THE ASSOCIATE'S OWN NOTES FOR EACH FLAGGED PASSAGE:
 ${userDescriptions || '(The associate did not leave any notes.)'}

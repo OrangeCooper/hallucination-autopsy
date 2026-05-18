@@ -72,7 +72,7 @@ export default function App() {
       const { matchedAnnotations } = scoreParagraphAnnotations(rawAnnotations, selectedScenario.plantedErrors)
       const identified = new Set(
         matchedAnnotations
-          .filter(a => a.matchedErrorId && !a.wrongCategory)
+          .filter(a => a.matchedErrorId)
           .map(a => a.matchedErrorId)
       )
       for (const [errorId, action] of Object.entries(rawOverrides || {})) {
