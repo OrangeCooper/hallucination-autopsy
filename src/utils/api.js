@@ -560,7 +560,7 @@ Generate ${catList.length} errors, one per category. Every error must be concret
       const raw = await callOpenRouter(
         [{ role: 'user', content: prompt + extra }],
         systemPrompt,
-        2500
+        1000
       )
       const parsed = normalizeGeneratedScenario(extractJSON(raw), config)
 
