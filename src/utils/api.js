@@ -461,27 +461,9 @@ export async function generateScenario(config) {
   if (catList.length === 0) {
     catList = [...ALLOWED_CATEGORIES].sort(() => Math.random() - 0.5).slice(0, diffConfig.errorCount)
   }
+  catList = catList.slice(0, 2)
 
-  const systemPrompt = `You are a synthetic legal document generator. You output ONLY valid JSON. No markdown. No code fences. No explanations.
-
-RULES:
-- The "category" field MUST be one of: ${[...ALLOWED_CATEGORIES].join(', ')}. No other values allowed.
-- Every exactText must appear verbatim in the document.
-- exactText: 1 to 3 words only.
-- No trailing commas. No markdown. No backticks.
-- Document must be 350+ words with multiple paragraphs and sections.
-- Paragraphs must be separated by blank lines (double newline). Each paragraph is a discrete unit.
-- Every error must be fully contained within a single paragraph.
-- Every error MUST be concrete and verifiable against a primary source.
-- The document must contain ONLY the requested planted errors. All other legal propositions, citations, dates, jurisdictional references, and statistics must be accurate and internally consistent.
-- Non-error paragraphs must not contain fabricated citations, unsupported precise numbers, outdated law, wrong jurisdiction law, omitted controlling exceptions, or misstated holdings.
-- Do not create ambiguous "maybe wrong" passages outside the listed errors. If a reasonable reviewer would flag a passage, it must be one of the returned errors.
-- AVOID temporal errors based on missing dates — use actual superseded statutes or overruled cases instead.
-
-FABRICATED CITATION RULES — CRITICAL:
-- A fabricated error citation (the planted hallucination) must use realistic litigant names: real surnames of attorneys, plausible corporate names (using standard suffixes like "Inc.", "LLC", "Co."), actual government agencies, or real place names. NEVER use "Doe", "ABC", "XYZ", "M/s", "John Doe", "Jane Roe", "State", "Corporation" alone, or any obvious placeholder.
-- The error must lie in a specific verifiable detail: the wrong volume number for the year, a reporter that does not exist for that court, a section number that does not correspond to the cited statute, a case year that does not match the docket numbering convention, or a holding that does not match the cited case.
-- Real case names in non-error paragraphs must be genuine, well-known cases from the jurisdiction.`
+  const systemPrompt = `Output only valid compact JSON. No markdown. No code fences.`
 
   const prompt = `Generate a legal training scenario.
 
@@ -492,68 +474,42 @@ Parameters:
 - Difficulty: ${config.difficulty}
 - Error Categories: ${catList.join(', ')}
 
-The document must be ${docTypePrompt}.
-Jurisdiction: ${config.jurisdiction || 'General'}. All legal citations must be from this jurisdiction.
+Write a fictional ${config.documentType} in ${config.practiceArea} law for ${config.jurisdiction || 'General'}.
+Use 4-6 paragraphs separated by blank lines. 160-240 words.
+Plant exactly ${catList.length} concrete legal error${catList.length !== 1 ? 's' : ''}, one per category listed.
+All other paragraphs must be legally plausible and not intentionally wrong.
+Each error must be in a different paragraph. exactText must be 1-3 words copied from the document.
 
-Use realistic legal formatting: section headings, citations, party names, dates.
-
-${diffConfig.subtlety}
-
-${diffConfig.preference}
-
-FABRICATED CITATION QUALITY:
-- Every fabricated citation must be professionally styled and structurally indistinguishable from a real citation on first glance.
-- Use realistic party names: e.g. "Bradford v. Pacific Northwest Utilities, 127 F.4th 892 (9th Cir. 2025)" — real-sounding surname, realistic corporate name, plausible docket number, proper Bluebook format.
-- NEVER use placeholder names (Doe, Roe, ABC, XYZ, M/s). The fabricated case name must look like it could be a real pending or recently decided case.
-- For hallucinated-citation errors, the exactText should be a specific part of the citation that is wrong (e.g. "F.4th 892" when that volume does not exist yet, or "9th Cir." when the case was actually from a different circuit).
-- In non-error paragraphs, use only genuine well-known cases that a lawyer in the jurisdiction would recognize.
-
-PARAGRAPH STRUCTURE:
-- Separate paragraphs with blank lines (double newline). Count them carefully.
-- Each paragraph must contain a discrete unit of legal analysis or information.
-- Paragraphs should not be explicitly numbered in the document text.
-- Ensure enough paragraphs exist that error paragraphs are not obvious by elimination.
-
-ERROR REQUIREMENTS:
-- Each error must be CONCRETE and VERIFIABLE against a primary source.
-- Fully contained within a single paragraph.
-- Every error in a distinct paragraph — unique paragraphNumber per error.
-- After writing, verify paragraphNumber accuracy by splitting on blank lines.
-- Before returning JSON, audit every paragraph that is NOT listed in errors and make it legally accurate, jurisdictionally consistent, current, and free of suspicious precise claims.
-- Include no decoy errors. The reviewer should not be rewarded for flagging any paragraph outside the returned errors array.
-- For every returned error, the explanation must identify why the flagged text is wrong, what the correct legal source or rule is, and why the surrounding non-error text should not itself be treated as an error.
-
-Return ONLY this JSON (no markdown, no backticks):
+Return ONLY this JSON. Put document and errors first:
 {
+  "document": "4-6 paragraphs separated by blank lines.",
+  "errors": [
+    {
+      "errorId": "err-1",
+      "category": "${catList[0] || 'hallucinated-citation'}",
+      "paragraphNumber": 2,
+      "exactText": "1-3 exact words",
+      "explanation": "Why this is wrong and what the correct law/source is.",
+      "severity": "medium"
+    }
+  ],
   "title": "Short title",
   "practiceArea": "${config.practiceArea}",
   "documentType": "${config.documentType}",
   "difficulty": "${config.difficulty}",
   "jurisdiction": "${config.jurisdiction || 'General'}",
-  "aiTaskDescription": "2-3 sentences. What the AI was asked to do: describe the specific legal task, document purpose, and the analytical work required. Must reference the practice area, document type, and jurisdiction.",
-  "assumedRole": "1-2 sentences. The reviewer's role in this context. E.g. 'You are a second-year litigation associate asked to verify a motion memo before filing in the Northern District of California.' Must reference the practice area and document type.",
-  "professionalStakes": "1-2 sentences. What is at stake if errors go undetected. Must be concrete and specific to the practice area, e.g. financial exposure, precedential harm, regulatory penalty, or client detriment.",
-  "document": "Document text with double newlines between paragraphs. 350+ words.",
-  "errors": [
-    {
-      "errorId": "err-1",
-      "category": "hallucinated-citation",
-      "paragraphNumber": 4,
-      "exactText": "1-3 word phrase",
-      "explanation": "3-5 sentences explaining the error, the correct law or source, and why nearby non-error text should not be treated as erroneous",
-      "severity": "high"
-    }
-  ]
+  "aiTaskDescription": "One sentence task description.",
+  "assumedRole": "One sentence reviewer role.",
+  "professionalStakes": "One sentence stakes."
 }
 
-CRITICAL: Each error's category MUST be one of: ${[...ALLOWED_CATEGORIES].join(', ')}. exactText: 1-3 words, word-for-word in document. paragraphNumber must be integer 1-based. No two errors share a paragraphNumber. No paragraph outside the errors array may contain an intentional or likely legal error.
-Generate ${catList.length} errors, one per category. Every error must be concretely verifiable against a primary source.`
+Categories must be only: ${[...ALLOWED_CATEGORIES].join(', ')}.`
 
   let lastError = null
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const extra = attempt === 1 && lastError
-        ? `\n\nPrevious attempt failed: ${lastError}. Return a single JSON object with required top-level fields: title, practiceArea, documentType, jurisdiction, document, errors. The errors field must be a non-empty array. Fix: category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}. Document must be 350+ words. exactText must be 1-3 words in document. Each error must have a unique paragraphNumber (integer, 1-based).`
+        ? `\n\nPrevious attempt failed: ${lastError}. Return a single JSON object with required top-level fields: document, errors, title, practiceArea, documentType, jurisdiction. The errors field must be a non-empty array. Fix: category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}. Document must be 160-240 words. exactText must be 1-3 words in document. Each error must have a unique paragraphNumber (integer, 1-based).`
         : attempt === 2 && lastError
           ? `\n\nPrevious attempts failed: ${lastError}. Use the simplest valid JSON shape now. Do not nest the result. Do not use markdown. Required keys: {"title":"...","practiceArea":"...","documentType":"...","jurisdiction":"...","document":"...","errors":[{"errorId":"err-1","category":"${catList[0] || 'hallucinated-citation'}","paragraphNumber":2,"exactText":"short phrase","explanation":"..."}]}.`
         : ''
@@ -575,8 +531,8 @@ Generate ${catList.length} errors, one per category. Every error must be concret
       }
 
       const wordCount = parsed.document.split(/\s+/).length
-      if (wordCount < 220) {
-        throw new Error(`Document too short: ${wordCount} words (min 220)`)
+      if (wordCount < 140) {
+        throw new Error(`Document too short: ${wordCount} words (min 140)`)
       }
 
       const paragraphs = parsed.document.split(/\n\s*\n/).filter(p => p.trim().length > 0)
