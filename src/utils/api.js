@@ -100,20 +100,6 @@ function extractJSON(raw) {
   }
 }
 
-function getOpenRouterCreditLimit(error) {
-  const message = error?.message || ''
-  if (!message.includes('API error 402')) return null
-  const matches = [...message.matchAll(/can only afford (\d+)/g)].map(match => Number(match[1]))
-  const affordable = matches.filter(Number.isFinite).sort((a, b) => b - a)[0]
-  return affordable || 450
-}
-
-function getGenerationTokenBudget(attempt, creditLimit = null) {
-  const base = [1800, 1200, 800, 500][attempt] || 500
-  if (!creditLimit) return base
-  return Math.max(250, Math.min(base, creditLimit - 50))
-}
-
 function firstArray(...values) {
   return values.find(value => Array.isArray(value))
 }
@@ -464,23 +450,6 @@ function getDifficultyConfig(difficulty) {
   }
 }
 
-function buildCompactScenarioPrompt(config, catList, lastError = null) {
-  return `Return ONLY valid JSON. No markdown.
-Create a synthetic legal training document using fictional facts only.
-Config: ${config.practiceArea}, ${config.documentType}, ${config.jurisdiction || 'General'}, ${config.difficulty}.
-Use these error categories: ${catList.join(', ')}.
-
-Required JSON shape:
-{"title":"...","practiceArea":"${config.practiceArea}","documentType":"${config.documentType}","jurisdiction":"${config.jurisdiction || 'General'}","aiTaskDescription":"...","assumedRole":"...","professionalStakes":"...","document":"4-6 paragraphs separated by blank lines, 160+ words","errors":[{"errorId":"err-1","category":"${catList[0] || 'hallucinated-citation'}","paragraphNumber":2,"exactText":"1-3 exact words from document","explanation":"Why this is wrong and the correct rule/source.","severity":"medium"}]}
-
-Rules:
-- category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}.
-- Include ${Math.max(1, Math.min(2, catList.length))} errors only.
-- exactText must appear verbatim in the document.
-- No paragraph outside errors may contain a likely legal error.
-${lastError ? `Previous failure: ${lastError}` : ''}`
-}
-
 export async function generateScenario(config) {
   const docTypePrompt = DOC_TYPE_PROMPTS[config.documentType] || 'a realistic legal document (350+ words, multiple sections)'
   const diffConfig = getDifficultyConfig(config.difficulty)
@@ -581,23 +550,17 @@ CRITICAL: Each error's category MUST be one of: ${[...ALLOWED_CATEGORIES].join('
 Generate ${catList.length} errors, one per category. Every error must be concretely verifiable against a primary source.`
 
   let lastError = null
-  let creditLimit = null
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const tokenBudget = getGenerationTokenBudget(attempt, creditLimit)
-      const useCompactPrompt = tokenBudget <= 900 || attempt >= 2
       const extra = attempt === 1 && lastError
         ? `\n\nPrevious attempt failed: ${lastError}. Return a single JSON object with required top-level fields: title, practiceArea, documentType, jurisdiction, document, errors. The errors field must be a non-empty array. Fix: category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}. Document must be 350+ words. exactText must be 1-3 words in document. Each error must have a unique paragraphNumber (integer, 1-based).`
         : attempt === 2 && lastError
           ? `\n\nPrevious attempts failed: ${lastError}. Use the simplest valid JSON shape now. Do not nest the result. Do not use markdown. Required keys: {"title":"...","practiceArea":"...","documentType":"...","jurisdiction":"...","document":"...","errors":[{"errorId":"err-1","category":"${catList[0] || 'hallucinated-citation'}","paragraphNumber":2,"exactText":"short phrase","explanation":"..."}]}.`
         : ''
-      const userPrompt = useCompactPrompt
-        ? buildCompactScenarioPrompt(config, catList, lastError)
-        : prompt + extra
       const raw = await callOpenRouter(
-        [{ role: 'user', content: userPrompt }],
-        useCompactPrompt ? 'You output only valid compact JSON for synthetic legal training scenarios.' : systemPrompt,
-        tokenBudget
+        [{ role: 'user', content: prompt + extra }],
+        systemPrompt,
+        2500
       )
       const parsed = normalizeGeneratedScenario(extractJSON(raw), config)
 
@@ -612,9 +575,8 @@ Generate ${catList.length} errors, one per category. Every error must be concret
       }
 
       const wordCount = parsed.document.split(/\s+/).length
-      const minWords = useCompactPrompt ? 140 : 220
-      if (wordCount < minWords) {
-        throw new Error(`Document too short: ${wordCount} words (min ${minWords})`)
+      if (wordCount < 220) {
+        throw new Error(`Document too short: ${wordCount} words (min 220)`)
       }
 
       const paragraphs = parsed.document.split(/\n\s*\n/).filter(p => p.trim().length > 0)
@@ -677,20 +639,11 @@ Generate ${catList.length} errors, one per category. Every error must be concret
 
       return parsed
     } catch (err) {
-      const affordable = getOpenRouterCreditLimit(err)
-      if (affordable) {
-        creditLimit = affordable
-        lastError = `OpenRouter credit limit allows about ${affordable} completion tokens`
-        continue
-      }
       lastError = err.message
     }
   }
 
-  if (creditLimit) {
-    throw new Error(`OpenRouter credits are too low for scenario generation. The app retried with compact prompts down to ${getGenerationTokenBudget(3, creditLimit)} max tokens, but generation still failed. Add credits or choose a simpler configuration.`)
-  }
-  throw new Error(lastError || 'Failed after 4 attempts')
+  throw new Error(lastError || 'Failed after 3 attempts')
 }
 
 export async function generateRecommendation(profile, sessions) {
