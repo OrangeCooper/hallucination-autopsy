@@ -28,6 +28,9 @@ export async function warmUpAPI() {
 }
 
 async function callOpenRouter(messages, systemPrompt, maxTokens = 1000) {
+  if (!API_KEY) {
+    throw new Error('Missing OpenRouter API key. Set VITE_OPENROUTER_API_KEY before generating scenarios.')
+  }
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 120000)
 
@@ -58,7 +61,19 @@ async function callOpenRouter(messages, systemPrompt, maxTokens = 1000) {
     }
 
     const data = await response.json()
-    return data.choices[0].message.content
+    const content = data?.choices?.[0]?.message?.content
+    if (Array.isArray(content)) {
+      return content.map(part => typeof part === 'string' ? part : part?.text || '').join('\n')
+    }
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      throw new Error('AI response did not include text content')
+    }
+    return content
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('AI generation timed out. Try a simpler configuration or lower difficulty.')
+    }
+    throw err
   } finally {
     clearTimeout(timeout)
   }
@@ -83,6 +98,116 @@ function extractJSON(raw) {
       throw new Error('Failed to parse JSON after repair attempts')
     }
   }
+}
+
+function firstArray(...values) {
+  return values.find(value => Array.isArray(value))
+}
+
+function firstString(...values) {
+  return values.find(value => typeof value === 'string' && value.trim().length > 0)
+}
+
+function normalizeGeneratedScenario(rawParsed, config) {
+  const parsed = rawParsed?.scenario || rawParsed?.trainingScenario || rawParsed?.case || rawParsed
+  const document = firstString(
+    parsed?.document,
+    parsed?.documentText,
+    parsed?.generatedDocument,
+    parsed?.legalDocument,
+    parsed?.memo,
+    parsed?.content,
+    parsed?.text,
+  )
+  const errors = firstArray(
+    parsed?.errors,
+    parsed?.plantedErrors,
+    parsed?.planted_errors,
+    parsed?.issues,
+    parsed?.hallucinations,
+    parsed?.answerKey,
+    parsed?.answer_key,
+  )
+
+  const missing = []
+  if (!document) missing.push('document')
+  if (!errors || errors.length === 0) missing.push('errors')
+  if (missing.length > 0) {
+    const topLevelKeys = rawParsed && typeof rawParsed === 'object' ? Object.keys(rawParsed).join(', ') : 'none'
+    const nestedKeys = parsed && parsed !== rawParsed && typeof parsed === 'object' ? Object.keys(parsed).join(', ') : ''
+    throw new Error(`Missing required field(s): ${missing.join(', ')}. Received top-level keys: ${topLevelKeys}${nestedKeys ? `; nested keys: ${nestedKeys}` : ''}`)
+  }
+
+  return {
+    title: firstString(parsed.title, parsed.name, parsed.scenarioTitle) || `${parsed.practiceArea || config.practiceArea} - ${parsed.documentType || config.documentType}`,
+    practiceArea: firstString(parsed.practiceArea, parsed.areaOfLaw, parsed.area, parsed.practice_area) || config.practiceArea,
+    documentType: firstString(parsed.documentType, parsed.type, parsed.document_type) || config.documentType,
+    difficulty: firstString(parsed.difficulty, parsed.complexity) || config.difficulty,
+    jurisdiction: firstString(parsed.jurisdiction, parsed.legalSystem) || config.jurisdiction || 'General',
+    aiTaskDescription: firstString(parsed.aiTaskDescription, parsed.taskDescription, parsed.ai_task_description),
+    assumedRole: firstString(parsed.assumedRole, parsed.reviewerRole, parsed.assumed_role),
+    professionalStakes: firstString(parsed.professionalStakes, parsed.stakes, parsed.professional_stakes),
+    document,
+    errors,
+  }
+}
+
+function normalizeGeneratedError(rawError, index) {
+  return {
+    ...rawError,
+    errorId: getErrorId(rawError) || rawError?.error_id || rawError?.errorID || `err-${index + 1}`,
+    category: rawError?.category || rawError?.errorCategory || rawError?.type,
+    paragraphNumber: Number(rawError?.paragraphNumber ?? rawError?.paragraph ?? rawError?.paragraph_number),
+    exactText: firstString(rawError?.exactText, rawError?.exact_text, rawError?.text, rawError?.phrase, rawError?.span),
+    explanation: firstString(rawError?.explanation, rawError?.rationale, rawError?.reason) || 'No explanation provided.',
+    severity: rawError?.severity || 'medium',
+  }
+}
+
+const CATEGORY_ALIASES = {
+  hallucinatedcitation: 'hallucinated-citation',
+  hallucinatedcase: 'hallucinated-citation',
+  fabricatedcitation: 'hallucinated-citation',
+  fakecitation: 'hallucinated-citation',
+  misrepresentedholding: 'misrepresented-holding',
+  misstatedholding: 'misrepresented-holding',
+  wrongholding: 'misrepresented-holding',
+  jurisdictionaldrift: 'jurisdictional-drift',
+  wrongjurisdiction: 'jurisdictional-drift',
+  jurisdictiondrift: 'jurisdictional-drift',
+  temporalerror: 'temporal-error',
+  outdatedlaw: 'temporal-error',
+  outdatedauthority: 'temporal-error',
+  falseprecision: 'false-precision',
+  overprecision: 'false-precision',
+  unsupportedprecision: 'false-precision',
+  omissionerror: 'omission-error',
+  materialomission: 'omission-error',
+}
+
+function normalizeCategory(category) {
+  if (!category) return category
+  const slug = String(category).trim().toLowerCase().replace(/[_\s]+/g, '-')
+  if (ALLOWED_CATEGORIES.has(slug)) return slug
+  const compact = slug.replace(/[^a-z]/g, '')
+  return CATEGORY_ALIASES[compact] || slug
+}
+
+function findExactTextInDocument(documentText, exactText) {
+  if (!exactText) return null
+  const directIndex = documentText.indexOf(exactText)
+  if (directIndex >= 0) return { text: exactText, index: directIndex }
+
+  const escaped = exactText
+    .trim()
+    .split(/\s+/)
+    .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+')
+    .replace(/["“”]/g, '["“”]')
+    .replace(/['‘’]/g, "['‘’]")
+  const match = documentText.match(new RegExp(escaped, 'i'))
+  if (!match || match.index == null) return null
+  return { text: documentText.slice(match.index, match.index + match[0].length), index: match.index }
 }
 
 const ID_PATTERNS = [
@@ -300,8 +425,8 @@ const ALLOWED_CATEGORIES = new Set([
 ])
 
 const DOC_TYPE_PROMPTS = {
-  'Litigation memo': 'a full inter-office litigation memorandum (400+ words, 3-5 sections: facts, legal standard, argument, conclusion)',
-  'Client advisory': 'a client advice letter with formal letterhead, numbered sections, and signature block (400+ words)',
+  'Litigation memo': 'a full inter-office litigation memorandum (350+ words, 3-5 sections: facts, legal standard, argument, conclusion)',
+  'Client advisory': 'a client advice letter with formal letterhead, numbered sections, and signature block (350+ words)',
   'Contract clause': 'a detailed contractual provision with subsections, definitions, and conditions',
   'Compliance checklist': 'a structured compliance checklist with numbered items, citations, and regulatory references',
   'Arbitration brief': 'a formal arbitration submission with statement of facts, legal arguments, and prayer for relief',
@@ -326,12 +451,16 @@ function getDifficultyConfig(difficulty) {
 }
 
 export async function generateScenario(config) {
-  const docTypePrompt = DOC_TYPE_PROMPTS[config.documentType] || 'a realistic legal document (400+ words, multiple sections)'
+  const docTypePrompt = DOC_TYPE_PROMPTS[config.documentType] || 'a realistic legal document (350+ words, multiple sections)'
   const diffConfig = getDifficultyConfig(config.difficulty)
-  const useRandom = config.errorCategories.length === 0
-  const catList = useRandom
+  const requestedCategories = Array.isArray(config.errorCategories) ? config.errorCategories : []
+  const useRandom = requestedCategories.length === 0
+  let catList = useRandom
     ? [...ALLOWED_CATEGORIES].sort(() => Math.random() - 0.5).slice(0, diffConfig.errorCount)
-    : config.errorCategories
+    : requestedCategories.filter(category => ALLOWED_CATEGORIES.has(category))
+  if (catList.length === 0) {
+    catList = [...ALLOWED_CATEGORIES].sort(() => Math.random() - 0.5).slice(0, diffConfig.errorCount)
+  }
 
   const systemPrompt = `You are a synthetic legal document generator. You output ONLY valid JSON. No markdown. No code fences. No explanations.
 
@@ -340,7 +469,7 @@ RULES:
 - Every exactText must appear verbatim in the document.
 - exactText: 1 to 3 words only.
 - No trailing commas. No markdown. No backticks.
-- Document must be 400+ words with multiple paragraphs and sections.
+- Document must be 350+ words with multiple paragraphs and sections.
 - Paragraphs must be separated by blank lines (double newline). Each paragraph is a discrete unit.
 - Every error must be fully contained within a single paragraph.
 - Every error MUST be concrete and verifiable against a primary source.
@@ -404,7 +533,7 @@ Return ONLY this JSON (no markdown, no backticks):
   "aiTaskDescription": "2-3 sentences. What the AI was asked to do: describe the specific legal task, document purpose, and the analytical work required. Must reference the practice area, document type, and jurisdiction.",
   "assumedRole": "1-2 sentences. The reviewer's role in this context. E.g. 'You are a second-year litigation associate asked to verify a motion memo before filing in the Northern District of California.' Must reference the practice area and document type.",
   "professionalStakes": "1-2 sentences. What is at stake if errors go undetected. Must be concrete and specific to the practice area, e.g. financial exposure, precedential harm, regulatory penalty, or client detriment.",
-  "document": "Document text with double newlines between paragraphs. 400+ words.",
+  "document": "Document text with double newlines between paragraphs. 350+ words.",
   "errors": [
     {
       "errorId": "err-1",
@@ -421,21 +550,19 @@ CRITICAL: Each error's category MUST be one of: ${[...ALLOWED_CATEGORIES].join('
 Generate ${catList.length} errors, one per category. Every error must be concretely verifiable against a primary source.`
 
   let lastError = null
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const extra = attempt === 1 && lastError
-        ? `\n\nPrevious attempt failed: ${lastError}. Fix: category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}. Document must be 400+ words. exactText must be 1-3 words in document. Each error must have a unique paragraphNumber (integer, 1-based).`
+        ? `\n\nPrevious attempt failed: ${lastError}. Return a single JSON object with required top-level fields: title, practiceArea, documentType, jurisdiction, document, errors. The errors field must be a non-empty array. Fix: category must be one of ${[...ALLOWED_CATEGORIES].join(', ')}. Document must be 350+ words. exactText must be 1-3 words in document. Each error must have a unique paragraphNumber (integer, 1-based).`
+        : attempt === 2 && lastError
+          ? `\n\nPrevious attempts failed: ${lastError}. Use the simplest valid JSON shape now. Do not nest the result. Do not use markdown. Required keys: {"title":"...","practiceArea":"...","documentType":"...","jurisdiction":"...","document":"...","errors":[{"errorId":"err-1","category":"${catList[0] || 'hallucinated-citation'}","paragraphNumber":2,"exactText":"short phrase","explanation":"..."}]}.`
         : ''
       const raw = await callOpenRouter(
         [{ role: 'user', content: prompt + extra }],
         systemPrompt,
-        2500
+        5500
       )
-      const parsed = extractJSON(raw)
-
-      if (!parsed.document || !parsed.errors || parsed.errors.length === 0) {
-        throw new Error('Missing required fields')
-      }
+      const parsed = normalizeGeneratedScenario(extractJSON(raw), config)
 
       if (!parsed.aiTaskDescription) {
         parsed.aiTaskDescription = `The AI was asked to draft a ${parsed.documentType || config.documentType} addressing ${parsed.practiceArea || config.practiceArea} law under ${parsed.jurisdiction || config.jurisdiction || 'the relevant jurisdiction'}.`
@@ -448,26 +575,30 @@ Generate ${catList.length} errors, one per category. Every error must be concret
       }
 
       const wordCount = parsed.document.split(/\s+/).length
-      if (wordCount < 250) {
-        throw new Error(`Document too short: ${wordCount} words (min 250)`)
+      if (wordCount < 220) {
+        throw new Error(`Document too short: ${wordCount} words (min 220)`)
       }
 
       const paragraphs = parsed.document.split(/\n\s*\n/).filter(p => p.trim().length > 0)
-      if (paragraphs.length < parsed.errors.length + 3) {
-        throw new Error(`Document needs more non-error paragraphs to avoid making error locations obvious`)
+      if (paragraphs.length < Math.max(4, parsed.errors.length + 1)) {
+        throw new Error(`Document needs more paragraphs; received ${paragraphs.length}`)
       }
       const usedParagraphs = new Set()
 
+      parsed.errors = parsed.errors.map(normalizeGeneratedError)
+
       for (const [index, err] of parsed.errors.entries()) {
-        err.errorId = getErrorId(err) || `err-${index + 1}`
         delete err.id
+        err.category = normalizeCategory(err.category)
 
         if (!ALLOWED_CATEGORIES.has(err.category)) {
           throw new Error(`Invalid category "${err.category}". Must be one of: ${[...ALLOWED_CATEGORIES].join(', ')}`)
         }
-        if (!parsed.document.includes(err.exactText)) {
+        const textMatch = findExactTextInDocument(parsed.document, err.exactText)
+        if (!textMatch) {
           throw new Error(`exactText "${err.exactText}" not in document`)
         }
+        err.exactText = textMatch.text
         if (err.exactText.split(/\s+/).length > 3) {
           throw new Error(`exactText too long: "${err.exactText}"`)
         }
