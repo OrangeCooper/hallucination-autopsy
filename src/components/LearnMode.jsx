@@ -3,7 +3,6 @@ import { ERROR_CATEGORIES } from '../data/errorCategories'
 import { generateScenario } from '../utils/api'
 import SkillRadarChart from './RadarChart'
 import ScenarioLoadingScreen, { ScenarioErrorScreen } from './ScenarioLoadingScreen'
-import TutorialCallout from './TutorialCallout'
 import { isIntroDismissed, dismissIntro } from '../utils/storage'
 import { TUTORIAL_SCENARIO } from '../data/tutorialScenario'
 
@@ -197,7 +196,7 @@ export default function LearnMode({ profile, sessions, onStartScenario, onViewSk
                   ))}
                 </ul>
               </div>
-              <button onClick={() => onStartScenario(generatedScenario, 'learn')} className="btn-primary text-xs !px-3 !py-1.5">Begin Review</button>
+              <button onClick={() => onStartScenario(generatedScenario, 'generated')} className="btn-primary text-xs !px-3 !py-1.5">Begin Review</button>
             </div>
           )}
         </div>

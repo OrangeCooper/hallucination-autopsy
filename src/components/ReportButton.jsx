@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { addReport, getReportCountForExplanation } from '../utils/storage'
 
 const ISSUE_CATEGORIES = [
@@ -6,6 +6,7 @@ const ISSUE_CATEGORIES = [
   { value: 'inaccurate-rule', label: 'The legal rule as stated appears to be inaccurate' },
   { value: 'wrong-jurisdiction', label: 'The jurisdiction identified appears to be wrong' },
   { value: 'outdated', label: 'This explanation appears to be outdated' },
+  { value: 'other', label: 'Other issue or correction' },
 ]
 
 export default function ReportButton({ scenarioId, errorId }) {
@@ -13,21 +14,30 @@ export default function ReportButton({ scenarioId, errorId }) {
   const [submitted, setSubmitted] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [userText, setUserText] = useState('')
+  const [reportCount, setReportCount] = useState(() => getReportCountForExplanation(scenarioId, errorId))
 
-  const reportCount = useMemo(() => {
-    return getReportCountForExplanation(scenarioId, errorId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, errorId, submitted])
+  useEffect(() => {
+    setExpanded(false)
+    setSubmitted(false)
+    setSelectedCategory('')
+    setUserText('')
+    setReportCount(getReportCountForExplanation(scenarioId, errorId))
+  }, [scenarioId, errorId])
+
+  const needsText = selectedCategory === 'other'
+  const canSubmit = selectedCategory && (!needsText || userText.trim().length >= 10)
 
   const handleSubmit = () => {
-    if (!selectedCategory) return
-    addReport({
+    if (!canSubmit) return
+    const reports = addReport({
       scenarioId,
       errorId,
       category: selectedCategory,
-      userText,
+      userText: userText.trim(),
     })
+    setReportCount(reports.filter(r => r.scenarioId === scenarioId && r.errorId === errorId).length)
     setSubmitted(true)
+    setExpanded(false)
   }
 
   if (submitted) {
@@ -66,13 +76,16 @@ export default function ReportButton({ scenarioId, errorId }) {
                 name={`issue-${errorId}`}
                 value={cat.value}
                 checked={selectedCategory === cat.value}
-                onChange={() => setSelectedCategory(cat.value)}
+                onChange={() => {
+                  setSelectedCategory(cat.value)
+                  if (cat.value !== 'other') setUserText('')
+                }}
                 className="glass-radio mt-0.5"
               />
               {cat.label}
             </label>
           ))}
-          {selectedCategory === 'other' && (
+          {needsText && (
             <textarea
               value={userText}
               onChange={e => setUserText(e.target.value)}
@@ -81,16 +94,25 @@ export default function ReportButton({ scenarioId, errorId }) {
               className="w-full text-xs glass-textarea resize-none h-16"
             />
           )}
+          {needsText && userText.trim().length < 10 && (
+            <p className="text-[10px]" style={{ color: 'var(--glass-secondary)' }}>
+              Add at least {10 - userText.trim().length} more character{10 - userText.trim().length !== 1 ? 's' : ''}.
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}
-              disabled={!selectedCategory}
+              disabled={!canSubmit}
               className="btn-primary text-xs !px-3 !py-1.5"
             >
               Submit Report
             </button>
             <button
-              onClick={() => setExpanded(false)}
+              onClick={() => {
+                setExpanded(false)
+                setSelectedCategory('')
+                setUserText('')
+              }}
               className="btn-secondary text-xs !px-3 !py-1.5"
             >
               Cancel

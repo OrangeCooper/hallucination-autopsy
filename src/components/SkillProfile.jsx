@@ -32,12 +32,40 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
   }
 
   const getTrend = (categoryId) => {
-    const relevant = sessions.filter(s => {
-      return true
-    }).slice(0, 3)
+    const relevant = sessions
+      .filter(s => s.categories?.[categoryId]?.encountered > 0)
+      .slice(0, 6)
 
-    if (relevant.length < 2) return 'stable'
+    if (relevant.length < 2) return 'none'
+
+    const midpoint = Math.ceil(relevant.length / 2)
+    const recent = relevant.slice(0, midpoint)
+    const older = relevant.slice(midpoint)
+    if (older.length === 0) return 'none'
+
+    const rateFor = rows => {
+      const totals = rows.reduce((acc, s) => {
+        const stats = s.categories[categoryId]
+        acc.encountered += stats.encountered
+        acc.identified += stats.identified
+        return acc
+      }, { encountered: 0, identified: 0 })
+      return totals.encountered > 0 ? totals.identified / totals.encountered : null
+    }
+
+    const recentRate = rateFor(recent)
+    const olderRate = rateFor(older)
+    if (recentRate === null || olderRate === null) return 'none'
+    if (recentRate - olderRate >= 0.15) return 'improving'
+    if (olderRate - recentRate >= 0.15) return 'declining'
     return 'stable'
+  }
+
+  const trendLabels = {
+    improving: { label: 'Improving', className: 'text-green-700' },
+    declining: { label: 'Declining', className: 'text-red-700' },
+    stable: { label: 'Stable', className: 'text-gray-500' },
+    none: { label: '-', className: 'text-gray-400' },
   }
 
   return (
@@ -109,6 +137,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
                     ? Math.round((stats.identified / stats.encountered) * 100)
                     : 0
                   const trend = getTrend(cat.id)
+                  const trendLabel = trendLabels[trend] || trendLabels.none
 
                   return (
                     <tr key={cat.id} className="last:border-0" style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
@@ -126,7 +155,7 @@ export default function SkillProfile({ profile, sessions, onBack, isTutorial, on
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <span className="text-gray-400 text-xs">—</span>
+                        <span className={`${trendLabel.className} text-xs`}>{trendLabel.label}</span>
                       </td>
                     </tr>
                   )

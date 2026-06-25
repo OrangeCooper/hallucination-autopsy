@@ -2,35 +2,41 @@ export function splitIntoParagraphs(text) {
   return text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0)
 }
 
+export function getErrorId(error) {
+  return error?.errorId || error?.id || null
+}
+
 export function scoreParagraphAnnotations(annotations, plantedErrors) {
   const errorByParagraph = {}
-  plantedErrors.forEach(e => {
+  for (const e of plantedErrors) {
     if (e.paragraphNumber) errorByParagraph[e.paragraphNumber] = e
-  })
+  }
 
-  const matchedAnnotations = annotations.map(ann => {
-    const plantedError = errorByParagraph[ann.paragraphNumber]
-    if (!plantedError) {
-      return { ...ann, matchedErrorId: null, wrongCategory: false, confidence: 0 }
+  const matchedAnnotations = []
+  const identifiedErrorIds = new Set()
+
+  for (const ann of annotations) {
+    const planted = errorByParagraph[ann.paragraphNumber]
+    if (!planted) {
+      matchedAnnotations.push({ ...ann, matchedErrorId: null, wrongCategory: false, confidence: 0 })
+      continue
     }
-    const wrongCategory = ann.category !== plantedError.category
-    return {
+
+    const wrongCategory = ann.category !== planted.category
+    const errorId = getErrorId(planted)
+    matchedAnnotations.push({
       ...ann,
-      matchedErrorId: plantedError.errorId,
+      matchedErrorId: errorId,
       wrongCategory,
       confidence: wrongCategory ? 0.5 : 1.0,
-    }
-  })
+    })
+    if (errorId) identifiedErrorIds.add(errorId)
+  }
 
-  const identifiedErrorIds = new Set(
-    matchedAnnotations.filter(a => a.matchedErrorId).map(a => a.matchedErrorId)
-  )
-
-  const missedErrors = plantedErrors.filter(e => !identifiedErrorIds.has(e.errorId))
-
+  const missedErrors = plantedErrors.filter(e => !identifiedErrorIds.has(getErrorId(e)))
   const falsePositives = matchedAnnotations.filter(a => !a.matchedErrorId)
 
-  return { matchedAnnotations, identifiedErrors: identifiedErrorIds, wrongCategoryErrors: new Set(), missedErrors, falsePositives }
+  return { matchedAnnotations, identifiedErrors: identifiedErrorIds, missedErrors, falsePositives }
 }
 
 export function matchAnnotations(annotations, plantedErrors) {

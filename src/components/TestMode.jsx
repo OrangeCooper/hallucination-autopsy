@@ -10,7 +10,12 @@ const PRACTICE_AREAS = [
   'IP', 'Tax', 'Competition', 'Privacy',
 ]
 
-const DIFFICULTIES = ['Standard', 'Complex', 'Multi-jurisdictional']
+const DOCUMENT_TYPES = [
+  'Litigation memo', 'Client advisory', 'Contract clause', 'Compliance checklist',
+  'Arbitration brief', 'Motion draft', 'Opinion letter', 'Research memo',
+]
+
+const DIFFICULTIES = ['Standard', 'Complex', 'Multi-jurisdictional', 'Adversarial']
 
 const JURISDICTIONS = [
   'US Federal', 'New York (US)', 'California (US)', 'Delaware (US)',
@@ -43,9 +48,10 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
     const selectedCats = shuffled.slice(0, Math.min(3, 2 + Math.floor(Math.random() * 2)))
 
     const areas = PRACTICE_AREAS
+    const types = DOCUMENT_TYPES
     const config = {
       practiceArea: practiceArea || areas[Math.floor(Math.random() * areas.length)],
-      documentType: 'Random',
+      documentType: types[Math.floor(Math.random() * types.length)],
       difficulty,
       jurisdiction: jurisdiction || JURISDICTIONS[Math.floor(Math.random() * JURISDICTIONS.length)],
       errorCategories: selectedCats,
@@ -56,13 +62,13 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
       const scenario = {
         id: `test-${Date.now()}`,
         title: parsed.title || `Test: ${parsed.practiceArea || config.practiceArea}`,
-        documentType: parsed.documentType || 'Legal document',
+        documentType: parsed.documentType || config.documentType,
         practiceArea: parsed.practiceArea || config.practiceArea,
         jurisdiction: parsed.jurisdiction || 'General',
         complexity: difficulty,
-        aiTaskDescription: 'Test scenario — adaptive generation.',
-        assumedRole: 'You are reviewing an AI-generated legal document under test conditions.',
-        professionalStakes: 'Test evaluation. Results update your skill profile.',
+        aiTaskDescription: parsed.aiTaskDescription || `The AI was asked to draft a ${config.documentType} addressing ${config.practiceArea} law under ${config.jurisdiction}.`,
+        assumedRole: parsed.assumedRole || `You are reviewing an AI-generated ${config.documentType} under test conditions.`,
+        professionalStakes: parsed.professionalStakes || 'Test evaluation. Results update your skill profile.',
         document: parsed.document,
         plantedErrors: parsed.errors,
         isGenerated: true,
@@ -71,7 +77,7 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
     } catch (err) {
       setError(err.message || 'Generation failed. Try again.')
     } finally { setGenerating(false) }
-  }, [practiceArea, difficulty, weaknessCategories])
+  }, [practiceArea, difficulty, jurisdiction, weaknessCategories])
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -147,7 +153,7 @@ export default function TestMode({ profile, onStartScenario, isTutorial, onViewS
                     </span>
                   ))}
                 </div>
-                <button onClick={() => onStartScenario(generatedScenario, 'test')} className="btn-primary text-xs !px-3 !py-1.5">Begin Test</button>
+                <button onClick={() => onStartScenario(generatedScenario, 'generated')} className="btn-primary text-xs !px-3 !py-1.5">Begin Test</button>
               </div>
             )}
           </div>

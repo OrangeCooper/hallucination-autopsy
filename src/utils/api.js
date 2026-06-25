@@ -1,4 +1,5 @@
 import { jsonrepair } from 'jsonrepair'
+import { getErrorId } from './annotations'
 
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || ''
@@ -106,18 +107,27 @@ function buildSemanticAnnotationContext(plantedErrors, userAnnotations, override
   })
 
   return plantedErrors.map(e => {
-    const ann = userMap.get(e.errorId)
-    const override = overrides[e.errorId]
+    const errorId = getErrorId(e)
+    const ann = userMap.get(errorId)
+    const override = overrides[errorId]
 
     let result
     if (override === 'mark-missed') {
       result = 'Missed (reviewer manually marked as missed)'
     } else if (override === 'mark-identified') {
       result = 'Identified (reviewer manually marked as identified)'
+    } else if (override === 'accept-category') {
+      result = 'Identified (reviewer manually accepted their chosen category)'
+    } else if (override === 'exclude-error') {
+      result = 'Excluded (reviewer marked the planted issue as not a real error)'
     } else if (ann?.overrideResult === 'missed') {
       result = 'Missed (reviewer manually marked as missed)'
     } else if (ann?.overrideResult === 'identified') {
       result = 'Identified (reviewer manually marked as identified)'
+    } else if (ann?.overrideResult === 'accepted-category') {
+      result = 'Identified (reviewer manually accepted their chosen category)'
+    } else if (ann?.overrideResult === 'excluded') {
+      result = 'Excluded (reviewer marked the planted issue as not a real error)'
     } else if (ann) {
       result = ann.wrongCategory ? 'Identified (wrong category)' : 'Identified'
     } else {
@@ -154,7 +164,10 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const trueMissed = semanticAnnotations.filter(a => a.result === 'Missed').length
   const overrideIdentified = semanticAnnotations.filter(a => a.result.includes('manually marked as identified')).length
   const overrideMissed = semanticAnnotations.filter(a => a.result.includes('manually marked as missed')).length
-  const falsePositives = userAnnotations.filter(a => !a.matchedErrorId).length
+  const overrideCategoryAccepted = semanticAnnotations.filter(a => a.result.includes('accepted their chosen category')).length
+  const overrideExcluded = semanticAnnotations.filter(a => a.result.startsWith('Excluded')).length
+  const promotedFalsePositives = userAnnotations.filter(a => a.overrideResult === 'promoted-false-positive').length
+  const falsePositives = userAnnotations.filter(a => !a.matchedErrorId && a.overrideResult !== 'promoted-false-positive').length
 
   const seen = new Set()
   const userNoteEntries = []
@@ -164,16 +177,21 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
     const key = `${a.paragraphNumber}|${a.explanation}`
     if (seen.has(key)) continue
     seen.add(key)
-    const err = a.matchedErrorId ? plantedErrors.find(e => e.errorId === a.matchedErrorId) : null
+    const err = a.matchedErrorId ? plantedErrors.find(e => getErrorId(e) === a.matchedErrorId) : null
     if (err) {
       let status
       if (a.overrideResult === 'missed') status = 'reviewer manually marked missed'
       else if (a.overrideResult === 'identified') status = 'reviewer manually marked identified'
+      else if (a.overrideResult === 'accepted-category') status = 'reviewer manually accepted their chosen category'
+      else if (a.overrideResult === 'excluded') status = 'reviewer marked this planted issue as not a real error'
       else if (err.category === a.category) status = 'correctly identified'
       else status = 'wrong category'
       userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}, status: ${status}] associate wrote: "${a.explanation}"`)
     } else {
-      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [not a planted error] associate wrote: "${a.explanation}"`)
+      const status = a.overrideResult === 'promoted-false-positive'
+        ? 'reviewer manually accepted this as a valid issue'
+        : 'not a planted error'
+      userNoteEntries.push(`- Paragraph ${a.paragraphNumber} [${status}] associate wrote: "${a.explanation}"`)
     }
   }
 
@@ -193,11 +211,21 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
   const userDescriptions = userNoteEntries.join('\n')
 
   const overrideEntries = Object.entries(overrides)
-    .filter(([, action]) => action === 'mark-identified' || action === 'mark-missed')
+    .filter(([, action]) => action === 'mark-identified' || action === 'mark-missed' || action === 'accept-category' || action === 'exclude-error' || action === 'promote-false-positive')
     .map(([errorId, action]) => {
-      const err = plantedErrors.find(e => e.errorId === errorId)
+      if (errorId.startsWith('fp:')) {
+        return `- User-flagged non-planted passage [manual override → ${action === 'promote-false-positive' ? 'accepted as valid issue' : action}]`
+      }
+      const err = plantedErrors.find(e => getErrorId(e) === errorId)
       if (!err) return ''
-      return `- Paragraph ${err.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}, manual override → ${action === 'mark-identified' ? 'identified' : 'missed'}]`
+      const label = action === 'mark-identified'
+        ? 'identified'
+        : action === 'mark-missed'
+          ? 'missed'
+          : action === 'accept-category'
+            ? 'category accepted'
+            : 'excluded as not a real error'
+      return `- Paragraph ${err.paragraphNumber} [error: ${err.category.replace(/-/g, ' ')}, manual override → ${label}]`
     })
     .filter(Boolean)
 
@@ -206,7 +234,7 @@ Write in professional analytical prose. No exclamation marks. No gamified langua
 Planted errors (${plantedErrors.length} total):
 ${semanticAnnotations.map(a => `- Para ${a.paragraphNumber} | error classification: [${a.errorCategory}] → user result: ${a.result}`).join('\n')}
 
-Breakdown: ${correctCat} correctly identified (correct error category), ${wrongCat} identified but wrong category, ${trueMissed} missed entirely${overrideIdentified > 0 || overrideMissed > 0 ? ` (${overrideIdentified} overridden to identified, ${overrideMissed} overridden to missed)` : ''}. The associate also flagged ${falsePositives} passage(s) that were not planted errors.${overrideEntries.length > 0 ? `\n\nManual overrides applied:\n${overrideEntries.join('\n')}` : ''}
+Breakdown: ${correctCat} correctly identified (correct error category), ${wrongCat} identified but wrong category, ${trueMissed} missed entirely, ${overrideCategoryAccepted} category override(s) accepted, ${overrideExcluded} planted issue(s) excluded as not real errors${overrideIdentified > 0 || overrideMissed > 0 ? ` (${overrideIdentified} overridden to identified, ${overrideMissed} overridden to missed)` : ''}. The associate also flagged ${falsePositives} passage(s) that were not planted errors and ${promotedFalsePositives} non-planted passage(s) manually accepted as valid issues.${overrideEntries.length > 0 ? `\n\nManual overrides applied:\n${overrideEntries.join('\n')}` : ''}
 
 THE ASSOCIATE'S OWN NOTES FOR EACH FLAGGED PASSAGE:
 ${userDescriptions || '(The associate did not leave any notes.)'}
@@ -217,6 +245,7 @@ Write a brief written review summary (3-5 sentences) in the register of partner-
 3. When the assessment is "Identified (wrong category)", note that while they found the error, they assigned the wrong error category — treat this as partial recognition but flag the category gap.
 4. When the assessment indicates the associate overrode the result manually, factor this into your assessment of their judgment.
 5. Where the associate assigned the wrong error category, note this as a category recognition issue.
+6. If a planted issue was excluded as not a real error or a non-planted passage was accepted as valid, describe that as a reviewer override rather than treating the original ground truth as absolute.
 Reference specific paragraph numbers and error categories. Do NOT reference internal identifiers.`
 
   const raw = await callOpenRouter([{ role: 'user', content: prompt }], systemPrompt)
@@ -315,6 +344,9 @@ RULES:
 - Paragraphs must be separated by blank lines (double newline). Each paragraph is a discrete unit.
 - Every error must be fully contained within a single paragraph.
 - Every error MUST be concrete and verifiable against a primary source.
+- The document must contain ONLY the requested planted errors. All other legal propositions, citations, dates, jurisdictional references, and statistics must be accurate and internally consistent.
+- Non-error paragraphs must not contain fabricated citations, unsupported precise numbers, outdated law, wrong jurisdiction law, omitted controlling exceptions, or misstated holdings.
+- Do not create ambiguous "maybe wrong" passages outside the listed errors. If a reasonable reviewer would flag a passage, it must be one of the returned errors.
 - AVOID temporal errors based on missing dates — use actual superseded statutes or overruled cases instead.
 
 FABRICATED CITATION RULES — CRITICAL:
@@ -358,6 +390,9 @@ ERROR REQUIREMENTS:
 - Fully contained within a single paragraph.
 - Every error in a distinct paragraph — unique paragraphNumber per error.
 - After writing, verify paragraphNumber accuracy by splitting on blank lines.
+- Before returning JSON, audit every paragraph that is NOT listed in errors and make it legally accurate, jurisdictionally consistent, current, and free of suspicious precise claims.
+- Include no decoy errors. The reviewer should not be rewarded for flagging any paragraph outside the returned errors array.
+- For every returned error, the explanation must identify why the flagged text is wrong, what the correct legal source or rule is, and why the surrounding non-error text should not itself be treated as an error.
 
 Return ONLY this JSON (no markdown, no backticks):
 {
@@ -372,17 +407,17 @@ Return ONLY this JSON (no markdown, no backticks):
   "document": "Document text with double newlines between paragraphs. 400+ words.",
   "errors": [
     {
-      "id": "err-1",
+      "errorId": "err-1",
       "category": "hallucinated-citation",
       "paragraphNumber": 4,
       "exactText": "1-3 word phrase",
-      "explanation": "2-4 sentences explaining the error and what the correct law actually is",
+      "explanation": "3-5 sentences explaining the error, the correct law or source, and why nearby non-error text should not be treated as erroneous",
       "severity": "high"
     }
   ]
 }
 
-CRITICAL: Each error's category MUST be one of: ${[...ALLOWED_CATEGORIES].join(', ')}. exactText: 1-3 words, word-for-word in document. paragraphNumber must be integer 1-based. No two errors share a paragraphNumber.
+CRITICAL: Each error's category MUST be one of: ${[...ALLOWED_CATEGORIES].join(', ')}. exactText: 1-3 words, word-for-word in document. paragraphNumber must be integer 1-based. No two errors share a paragraphNumber. No paragraph outside the errors array may contain an intentional or likely legal error.
 Generate ${catList.length} errors, one per category. Every error must be concretely verifiable against a primary source.`
 
   let lastError = null
@@ -418,34 +453,41 @@ Generate ${catList.length} errors, one per category. Every error must be concret
       }
 
       const paragraphs = parsed.document.split(/\n\s*\n/).filter(p => p.trim().length > 0)
+      if (paragraphs.length < parsed.errors.length + 3) {
+        throw new Error(`Document needs more non-error paragraphs to avoid making error locations obvious`)
+      }
       const usedParagraphs = new Set()
 
-      for (const err of parsed.errors) {
+      for (const [index, err] of parsed.errors.entries()) {
+        err.errorId = getErrorId(err) || `err-${index + 1}`
+        delete err.id
+
         if (!ALLOWED_CATEGORIES.has(err.category)) {
           throw new Error(`Invalid category "${err.category}". Must be one of: ${[...ALLOWED_CATEGORIES].join(', ')}`)
         }
         if (!parsed.document.includes(err.exactText)) {
           throw new Error(`exactText "${err.exactText}" not in document`)
         }
-        if (err.exactText.split(/\s+/).length > 4) {
+        if (err.exactText.split(/\s+/).length > 3) {
           throw new Error(`exactText too long: "${err.exactText}"`)
         }
 
-        const idx = parsed.document.indexOf(err.exactText)
-
+        const claimedParaIndex = Number.isInteger(err.paragraphNumber) ? err.paragraphNumber - 1 : -1
         let actualParaNum = 0
-        let charCount = 0
-        for (let p = 0; p < paragraphs.length; p++) {
-          const paraLen = paragraphs[p].length
-          if (idx >= charCount && idx < charCount + paraLen + 2) {
-            actualParaNum = p + 1
-            break
-          }
-          charCount += paraLen + 2
-        }
+        if (claimedParaIndex >= 0 && paragraphs[claimedParaIndex]?.includes(err.exactText)) {
+          actualParaNum = claimedParaIndex + 1
+        } else {
+          const matchingParagraphs = paragraphs
+            .map((paragraph, index) => paragraph.includes(err.exactText) ? index + 1 : null)
+            .filter(Boolean)
 
-        if (actualParaNum === 0) {
-          throw new Error(`Could not locate exactText "${err.exactText}" in any paragraph`)
+          if (matchingParagraphs.length === 1) {
+            actualParaNum = matchingParagraphs[0]
+          } else if (matchingParagraphs.length > 1) {
+            throw new Error(`exactText "${err.exactText}" appears in multiple paragraphs; choose more distinctive exactText`)
+          } else {
+            throw new Error(`Could not locate exactText "${err.exactText}" in any paragraph`)
+          }
         }
 
         err.paragraphNumber = actualParaNum
@@ -455,6 +497,8 @@ Generate ${catList.length} errors, one per category. Every error must be concret
         }
         usedParagraphs.add(err.paragraphNumber)
 
+        const paragraphStart = parsed.document.indexOf(paragraphs[actualParaNum - 1])
+        const idx = paragraphStart + paragraphs[actualParaNum - 1].indexOf(err.exactText)
         err.startOffset = idx
         err.endOffset = idx + err.exactText.length
         err.correctLaw = err.correctLaw || ''

@@ -10,11 +10,10 @@ import TestMode from './components/TestMode'
 import LoginScreen from './components/LoginScreen'
 import TutorialBanner from './components/TutorialBanner'
 import { useSkillProfile } from './hooks/useSkillProfile'
-import { scoreParagraphAnnotations } from './utils/annotations'
+
 import { warmUpAPI } from './utils/api'
 import { onAuthChange, logoutUser } from './utils/firebase'
 import { getSessions, getSkillProfile } from './utils/storage'
-import { TUTORIAL_SCENARIO } from './data/tutorialScenario'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('learn')
@@ -69,8 +68,7 @@ export default function App() {
 
   const handleSaveAndExit = useCallback((rawAnnotations, rawOverrides, analysisIdentifiedSet) => {
     if (selectedScenario && rawAnnotations) {
-      const { matchedAnnotations } = scoreParagraphAnnotations(rawAnnotations, selectedScenario.plantedErrors)
-      updateStoredSession(selectedScenario, matchedAnnotations, selectedScenario.plantedErrors, currentMode, rawOverrides, analysisIdentifiedSet)
+      updateStoredSession(selectedScenario, rawAnnotations, selectedScenario.plantedErrors, currentMode, rawOverrides, analysisIdentifiedSet)
       if (user) {
         setUserProfile(getSkillProfile())
         setUserSessions(getSessions())

@@ -3,7 +3,7 @@ import { ERROR_CATEGORIES } from '../data/errorCategories'
 import SkillRadarChart from './RadarChart'
 import { generateRecommendation } from '../utils/api'
 import { resetAllData } from '../utils/storage'
-import { addReport, getReports } from '../utils/storage'
+import { getReports } from '../utils/storage'
 
 export default function AccountPage({ profile, sessions, user, onBack }) {
   const [recommendation, setRecommendation] = useState(null)
